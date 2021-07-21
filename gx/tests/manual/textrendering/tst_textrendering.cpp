@@ -77,9 +77,14 @@ void TestWindow::initializeGL()
 {
     using namespace std::string_literals;
 
-    const auto font = "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf"s;
+    const auto font =
+#ifdef _WIN32
+            "/Windows/Fonts/comic.ttf"s;
+#else
+            "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf"s;
+#endif
     if (!m_fontCache.load(font, 50)) {
-        spdlog::warn("failed to load %s", font.c_str());
+        spdlog::warn("failed to load {}", font.c_str());
     }
 
     m_spriteBatcher = std::make_unique<GX::SpriteBatcher>();

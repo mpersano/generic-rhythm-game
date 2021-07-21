@@ -30,7 +30,12 @@ int main()
 {
     GX::FontCache fontCache;
 
-    const auto font = "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf"s;
+    const auto font =
+#ifdef _WIN32
+            "/Windows/Fonts/comic.ttf"s;
+#else
+            "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf"s;
+#endif
     if (!fontCache.load(font, 50)) {
         std::cout << "Failed to load" << font << '\n';
         return 1;
