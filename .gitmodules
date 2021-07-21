@@ -7,3 +7,6 @@
 [submodule "3rdparty/glfw"]
 	path = 3rdparty/glfw
 	url = https://github.com/glfw/glfw.git
+[submodule "3rdparty/openal-soft"]
+	path = 3rdparty/openal-soft
+	url = https://github.com/kcat/openal-soft.git
