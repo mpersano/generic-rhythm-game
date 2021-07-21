@@ -1,0 +1,2 @@
+add_subdirectory(fontcache)
+add_subdirectory(textrendering)
