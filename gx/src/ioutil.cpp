@@ -7,7 +7,7 @@ namespace Util {
 
 std::optional<std::vector<unsigned char>> readFile(const std::string &path)
 {
-    std::ifstream file(path);
+    std::ifstream file(path, std::ios::binary);
     if (!file.is_open())
         return {};
 
