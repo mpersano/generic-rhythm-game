@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
 
+#include <array>
+
 namespace GX {
 
 namespace {
