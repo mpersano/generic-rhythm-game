@@ -1,6 +1,7 @@
 #include <gx/glwindow.h>
 
 #include <GLFW/glfw3.h>
+#include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include <array>
@@ -87,7 +88,10 @@ int glDebugSeverityIndex(GLenum severity)
 
 } // namespace
 
-GLWindow::GLWindow() = default;
+GLWindow::GLWindow()
+{
+    spdlog::cfg::load_env_levels();
+}
 
 GLWindow::~GLWindow()
 {
@@ -193,6 +197,14 @@ void GLWindow::mouseMoveEvent(const glm::vec2 & /*position*/)
 {
 }
 
+void GLWindow::keyPressEvent(int /* key */)
+{
+}
+
+void GLWindow::keyReleaseEvent(int /* key */)
+{
+}
+
 void GLWindow::keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
     auto *gameWindow = reinterpret_cast<GLWindow *>(glfwGetWindowUserPointer(window));
@@ -219,12 +231,16 @@ void GLWindow::sizeCallback(GLFWwindow *window, int width, int height)
 
 void GLWindow::keyEvent(int key, int /*scancode*/, int action, int /*mods*/)
 {
-    switch (key) {
-    case GLFW_KEY_ESCAPE:
-        if (action == GLFW_PRESS)
+    switch (action) {
+    case GLFW_PRESS:
+        if (key == GLFW_KEY_ESCAPE) {
             glfwSetWindowShouldClose(m_window, 1);
+        } else {
+            keyPressEvent(key);
+        }
         break;
-    default:
+    case GLFW_RELEASE:
+        keyReleaseEvent(key);
         break;
     }
 }

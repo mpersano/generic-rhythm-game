@@ -37,6 +37,8 @@ protected:
     virtual void mousePressEvent();
     virtual void mouseReleaseEvent();
     virtual void mouseMoveEvent(const glm::vec2 &position);
+    virtual void keyPressEvent(int key);
+    virtual void keyReleaseEvent(int key);
 
 private:
     void initResources();
