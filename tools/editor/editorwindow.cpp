@@ -1,6 +1,7 @@
 #include "editorwindow.h"
 
 #include "track.h"
+#include "trackinfowidget.h"
 
 #include <QAudioDecoder>
 #include <QDebug>
@@ -24,7 +25,7 @@ protected:
 private:
     void adjustScene();
 
-    Track *m_track;
+    Track *m_track = nullptr;
 };
 
 namespace {
@@ -40,6 +41,8 @@ TrackView::TrackView(Track *track, QWidget *parent)
     , m_track(track)
 {
     connect(m_track, &Track::decodingFinished, this, &TrackView::adjustScene);
+    connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
+    connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
 }
 
 void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
@@ -162,7 +165,7 @@ void TrackView::adjustScene()
     const auto bottomRight = QPointF(2 * HorizMargin + WaveformWidth + EventAreaWidth, VertMargin);
     scene()->setSceneRect(QRectF(topLeft, bottomRight));
 
-    update();
+    viewport()->update();
 }
 
 EditorWindow::EditorWindow(QWidget *parent)
@@ -170,6 +173,7 @@ EditorWindow::EditorWindow(QWidget *parent)
     , m_track(new Track(this))
     , m_scene(new QGraphicsScene(this))
     , m_trackView(new TrackView(m_track, this))
+    , m_trackInfo(new TrackInfoWidget(m_track, this))
 {
     m_trackView->setScene(m_scene);
     m_trackView->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -177,6 +181,7 @@ EditorWindow::EditorWindow(QWidget *parent)
     auto *layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->addWidget(m_trackView);
+    layout->addWidget(m_trackInfo);
 
     m_track->decode(QDir::current().filePath("test.ogg"));
 }

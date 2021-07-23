@@ -3,6 +3,7 @@
 #include <QWidget>
 
 class TrackView;
+class TrackInfoWidget;
 class Track;
 
 class QGraphicsScene;
@@ -19,5 +20,6 @@ private:
 
     Track *m_track;
     TrackView *m_trackView;
+    TrackInfoWidget *m_trackInfo;
     QGraphicsScene *m_scene;
 };

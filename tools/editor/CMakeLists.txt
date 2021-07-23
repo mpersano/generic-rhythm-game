@@ -10,6 +10,8 @@ set(editor_SOURCES
     editorwindow.h
     track.cpp
     track.h
+    trackinfowidget.cpp
+    trackinfowidget.h
 )
 
 add_executable(editor

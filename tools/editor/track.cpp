@@ -22,9 +22,15 @@ Track::~Track() = default;
 
 void Track::decode(const QString &fileName)
 {
+    m_fileName = fileName;
+
     m_samples.clear();
     m_format = QAudioFormat();
     Q_ASSERT(!m_format.isValid());
+
+    emit fileNameChanged(fileName);
+    emit durationChanged(duration());
+    emit rateChanged(rate());
 
     m_decoder->setSourceFilename(fileName);
     m_decoder->start();
@@ -42,8 +48,10 @@ void Track::audioBufferReady()
     const QAudioBuffer buffer = m_decoder->read();
 
     const QAudioFormat format = buffer.format();
-    if (!m_format.isValid())
+    if (!m_format.isValid()) {
         m_format = format;
+        emit rateChanged(rate());
+    }
 
     qDebug() << "**** got buffer: duration:" << buffer.duration() << "samples:" << buffer.sampleCount() << "format:" << format;
 
@@ -51,12 +59,19 @@ void Track::audioBufferReady()
 
     const auto *data = buffer.constData<SampleType>();
     m_samples.insert(m_samples.end(), data, data + buffer.sampleCount());
+
+    emit durationChanged(duration());
 }
 
 void Track::audioDecoderFinished()
 {
     qDebug() << "**** finished decoding, got" << m_samples.size() << "samples";
     emit decodingFinished();
+}
+
+QString Track::fileName() const
+{
+    return m_fileName;
 }
 
 const Track::SampleType *Track::samples() const
@@ -74,14 +89,30 @@ int Track::sampleCount() const
     return static_cast<int>(m_samples.size());
 }
 
+void Track::setEventTracks(int eventTracks)
+{
+    if (eventTracks == m_eventTracks)
+        return;
+    m_eventTracks = eventTracks;
+    emit eventTracksChanged(eventTracks);
+}
+
 int Track::eventTracks() const
 {
-    return 4;
+    return m_eventTracks;
+}
+
+void Track::setBeatsPerMinute(int beatsPerMinute)
+{
+    if (beatsPerMinute == m_beatsPerMinute)
+        return;
+    m_beatsPerMinute = beatsPerMinute;
+    emit beatsPerMinuteChanged(beatsPerMinute);
 }
 
 int Track::beatsPerMinute() const
 {
-    return 200;
+    return m_beatsPerMinute;
 }
 
 int Track::rate() const
