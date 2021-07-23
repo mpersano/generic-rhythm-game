@@ -21,6 +21,19 @@ EditorWindow::EditorWindow(QWidget *parent)
     layout->addWidget(m_trackInfo);
 
     m_track->decode(QDir::current().filePath("test.ogg"));
+
+    connect(m_track, &Track::decodingFinished, this, [this] {
+        // add some random events
+        const auto duration = m_track->duration();
+        const float dt = 60.0f / m_track->beatsPerMinute();
+        for (int i = 0, eventTracks = m_track->eventTracks(); i < eventTracks; ++i) {
+            for (float t = 0.0f; t < duration; t += dt) {
+                if ((std::rand() % 5) == 0) {
+                    m_track->addTapEvent(i, t);
+                }
+            }
+        }
+    });
 }
 
 EditorWindow::~EditorWindow() = default;

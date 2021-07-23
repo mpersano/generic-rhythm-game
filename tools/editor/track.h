@@ -3,6 +3,8 @@
 #include <QAudioFormat>
 #include <QObject>
 
+#include <memory>
+
 class QAudioDecoder;
 
 class Track : public QObject
@@ -29,8 +31,23 @@ public:
     int beatsPerMinute() const;
 
     int rate() const;
-
     float duration() const; // seconds
+
+    struct Event {
+        enum class Type {
+            Tap,
+            Hold
+        };
+        Type type;
+        int track;
+        float start;
+        float duration;
+    };
+
+    const Event *addTapEvent(int track, float start);
+    const Event *addHoldEvent(int track, float start, float duration);
+    void removeEvent(const Event *event);
+    std::vector<const Event *> events() const;
 
 signals:
     void decodingFinished();
@@ -39,6 +56,8 @@ signals:
     void eventTracksChanged(int eventTracks);
     void beatsPerMinuteChanged(int beatsPerMinute);
     void durationChanged(float duration);
+    void eventAdded(const Event *event);
+    void eventAboutToBeRemoved(const Event *event);
 
 private:
     void audioBufferReady();
@@ -50,4 +69,5 @@ private:
     std::vector<SampleType> m_samples;
     int m_eventTracks = 4;
     int m_beatsPerMinute = 200;
+    std::vector<std::unique_ptr<Event>> m_events;
 };

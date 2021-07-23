@@ -1,8 +1,12 @@
 #pragma once
 
+#include "track.h"
+
 #include <QGraphicsView>
 
-class Track;
+#include <unordered_map>
+
+class EventItem;
 
 class TrackView : public QGraphicsView
 {
@@ -16,4 +20,5 @@ private:
     void adjustSceneRect();
 
     Track *m_track = nullptr;
+    std::unordered_map<const Track::Event *, EventItem *> m_eventItems;
 };

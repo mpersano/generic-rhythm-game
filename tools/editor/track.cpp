@@ -119,3 +119,38 @@ int Track::rate() const
 {
     return m_format.sampleRate();
 }
+
+std::vector<const Track::Event *> Track::events() const
+{
+    std::vector<const Event *> result;
+    result.reserve(m_events.size());
+    std::transform(m_events.begin(), m_events.end(), std::back_inserter(result), [](const auto &event) { return event.get(); });
+    return result;
+}
+
+const Track::Event *Track::addTapEvent(int track, float start)
+{
+    m_events.emplace_back(new Event { Event::Type::Tap, track, start, 0.0f });
+    const auto *event = m_events.back().get();
+    emit eventAdded(event);
+    return event;
+}
+
+const Track::Event *Track::addHoldEvent(int track, float start, float duration)
+{
+    m_events.emplace_back(new Event { Event::Type::Hold, track, start, 0.0f });
+    const auto *event = m_events.back().get();
+    emit eventAdded(event);
+    return event;
+}
+
+void Track::removeEvent(const Event *event)
+{
+    auto it = std::find_if(m_events.begin(), m_events.end(), [event](auto &item) {
+        return item.get() == event;
+    });
+    if (it == m_events.end())
+        return;
+    emit eventAboutToBeRemoved(event);
+    m_events.erase(it);
+}
