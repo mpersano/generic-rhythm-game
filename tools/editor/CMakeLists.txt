@@ -10,6 +10,8 @@ set(editor_SOURCES
     editorwindow.h
     track.cpp
     track.h
+    trackview.cpp
+    trackview.h
     trackinfowidget.cpp
     trackinfowidget.h
 )
