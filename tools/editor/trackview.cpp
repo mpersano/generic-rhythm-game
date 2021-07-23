@@ -2,6 +2,9 @@
 
 #include "track.h"
 
+#include <QDebug>
+#include <QGraphicsEllipseItem>
+
 #include <cmath>
 
 namespace {
@@ -10,16 +13,102 @@ constexpr auto VertMargin = 20.0f;
 constexpr auto WaveformWidth = 200.0f;
 constexpr auto EventAreaWidth = 500.0f;
 constexpr auto PixelsPerSecond = 150.0f;
+
+float trackX(const Track *track, int trackIndex)
+{
+    return HorizMargin + WaveformWidth + (trackIndex + 1) * EventAreaWidth / (track->eventTracks() + 1);
+}
+
+QPointF eventPosition(const Track *track, int trackIndex, float time)
+{
+    const float x = trackX(track, trackIndex);
+    const float y = -PixelsPerSecond * time;
+    return QPointF(x, y);
+}
+
+QBrush trackBrush(int trackIndex)
+{
+    static const std::vector<QBrush> brushes = {
+        Qt::red, Qt::yellow, Qt::cyan, Qt::magenta, Qt::green, Qt::gray
+    };
+    return brushes[trackIndex];
+}
+
 } // namespace
+
+class EventItem : public QGraphicsItem
+{
+public:
+    EventItem(const Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
+
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+
+protected:
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+
+private:
+    static constexpr const auto Radius = 10.0;
+
+    const Track *m_track;
+    const Track::Event *m_event;
+};
+
+EventItem::EventItem(const Track *track, const Track::Event *event, QGraphicsItem *parent)
+    : QGraphicsItem(parent)
+    , m_track(track)
+    , m_event(event)
+{
+    setFlag(ItemIsMovable);
+    setFlag(ItemSendsGeometryChanges);
+    setPos(eventPosition(track, event->track, event->start));
+}
+
+QRectF EventItem::boundingRect() const
+{
+    return QRectF(-Radius, -Radius, 2.0f * Radius, 2.0f * Radius);
+}
+
+QVariant EventItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemPositionChange) {
+        // stay on your lane!
+        QPointF updatePos = value.toPointF();
+        updatePos.setX(trackX(m_track, m_event->track));
+        return updatePos;
+    }
+    return value;
+}
+
+void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
+{
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(trackBrush(m_event->track));
+    painter->drawEllipse(boundingRect());
+}
 
 TrackView::TrackView(Track *track, QWidget *parent)
     : QGraphicsView(parent)
     , m_track(track)
 {
     setScene(new QGraphicsScene(this));
+    setRenderHint(QPainter::Antialiasing);
     connect(m_track, &Track::decodingFinished, this, &TrackView::adjustSceneRect);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
+    connect(m_track, &Track::eventAdded, this, [this](const Track::Event *event) {
+        auto *item = new EventItem(m_track, event);
+        m_eventItems[event] = item;
+        scene()->addItem(item);
+    });
+    connect(m_track, &Track::eventAboutToBeRemoved, this, [this](const Track::Event *event) {
+        auto it = m_eventItems.find(event);
+        if (it == m_eventItems.end())
+            return;
+        auto *item = it->second;
+        scene()->removeItem(item);
+        delete item;
+    });
 }
 
 void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
