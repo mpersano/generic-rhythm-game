@@ -16,10 +16,7 @@ public:
     ~EditorWindow() override;
 
 private:
-    void trackDecodingFinished();
-
     Track *m_track;
     TrackView *m_trackView;
     TrackInfoWidget *m_trackInfo;
-    QGraphicsScene *m_scene;
 };

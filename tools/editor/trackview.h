@@ -13,7 +13,7 @@ protected:
     void drawBackground(QPainter *painter, const QRectF &rect);
 
 private:
-    void adjustScene();
+    void adjustSceneRect();
 
     Track *m_track = nullptr;
 };

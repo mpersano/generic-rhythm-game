@@ -16,7 +16,8 @@ TrackView::TrackView(Track *track, QWidget *parent)
     : QGraphicsView(parent)
     , m_track(track)
 {
-    connect(m_track, &Track::decodingFinished, this, &TrackView::adjustScene);
+    setScene(new QGraphicsScene(this));
+    connect(m_track, &Track::decodingFinished, this, &TrackView::adjustSceneRect);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
 }
@@ -133,7 +134,7 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
     QGraphicsView::drawBackground(painter, rect);
 }
 
-void TrackView::adjustScene()
+void TrackView::adjustSceneRect()
 {
     const auto trackHeight = m_track->duration() * PixelsPerSecond;
 
