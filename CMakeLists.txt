@@ -7,4 +7,5 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(3rdparty)
 add_subdirectory(gx)
+add_subdirectory(tools)
 add_subdirectory(game)
