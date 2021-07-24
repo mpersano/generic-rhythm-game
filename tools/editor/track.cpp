@@ -157,6 +157,24 @@ void Track::removeEvent(const Event *event)
     m_events.erase(it);
 }
 
+void Track::setEventStart(const Event *event, float start)
+{
+    Q_ASSERT(std::any_of(m_events.begin(), m_events.end(), [event](auto &item) {
+        return item.get() == event;
+    }));
+    const_cast<Event *>(event)->start = start;
+    emit eventChanged(event);
+}
+
+void Track::setEventDuration(const Event *event, float duration)
+{
+    Q_ASSERT(std::any_of(m_events.begin(), m_events.end(), [event](auto &item) {
+        return item.get() == event;
+    }));
+    const_cast<Event *>(event)->duration = duration;
+    emit eventChanged(event);
+}
+
 namespace {
 QString audioFileKey()
 {

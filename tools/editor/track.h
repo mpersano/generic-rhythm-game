@@ -48,6 +48,8 @@ public:
     const Event *addTapEvent(int track, float start);
     const Event *addHoldEvent(int track, float start, float duration);
     void removeEvent(const Event *event);
+    void setEventStart(const Event *event, float start);
+    void setEventDuration(const Event *event, float duration);
     std::vector<const Event *> events() const;
 
     QJsonObject save() const;
@@ -62,6 +64,7 @@ signals:
     void durationChanged(float duration);
     void eventAdded(const Event *event);
     void eventAboutToBeRemoved(const Event *event);
+    void eventChanged(const Event *event);
     void eventsReset();
 
 private:

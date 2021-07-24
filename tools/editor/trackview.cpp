@@ -2,6 +2,7 @@
 
 #include "track.h"
 
+#include <QAction>
 #include <QGraphicsItem>
 #include <QStyleOptionGraphicsItem>
 
@@ -39,7 +40,7 @@ QColor trackColor(int trackIndex)
 class EventItem : public QGraphicsItem
 {
 public:
-    EventItem(const Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
+    EventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
 
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
@@ -50,11 +51,11 @@ protected:
 private:
     static constexpr const auto Radius = 10.0;
 
-    const Track *m_track;
+    Track *m_track;
     const Track::Event *m_event;
 };
 
-EventItem::EventItem(const Track *track, const Track::Event *event, QGraphicsItem *parent)
+EventItem::EventItem(Track *track, const Track::Event *event, QGraphicsItem *parent)
     : QGraphicsItem(parent)
     , m_track(track)
     , m_event(event)
@@ -70,11 +71,21 @@ QRectF EventItem::boundingRect() const
 
 QVariant EventItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-    if (change == ItemPositionChange) {
+    switch (change) {
+    case ItemPositionChange: {
         // stay on your lane!
         QPointF updatePos = value.toPointF();
         updatePos.setX(trackX(m_track, m_event->track));
         return updatePos;
+    }
+    case ItemPositionHasChanged: {
+        const auto pos = value.toPointF();
+        const auto eventStart = static_cast<float>(-pos.y()) / PixelsPerSecond;
+        m_track->setEventStart(m_event, eventStart);
+        break;
+    }
+    default:
+        break;
     }
     return value;
 }
@@ -123,6 +134,23 @@ TrackView::TrackView(Track *track, QWidget *parent)
         for (const auto *event : m_track->events())
             addEvent(event);
     });
+
+    auto *deleteAction = new QAction(this);
+    deleteAction->setShortcuts({ QKeySequence::Delete, Qt::Key_Backspace });
+    connect(deleteAction, &QAction::triggered, this, [this] {
+        const auto selectedItems = scene()->selectedItems();
+        for (const auto *item : selectedItems) {
+            auto it = std::find_if(m_eventItems.begin(), m_eventItems.end(),
+                                   [item](const auto &entry) {
+                                       return entry.second == item;
+                                   });
+            if (it != m_eventItems.end()) {
+                const auto *event = it->first;
+                m_track->removeEvent(event);
+            }
+        }
+    });
+    addAction(deleteAction);
 }
 
 void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
