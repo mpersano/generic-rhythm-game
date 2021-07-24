@@ -104,6 +104,12 @@ void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawEllipse(boundingRect());
 }
 
+class MarkerItem : public QGraphicsLineItem
+{
+public:
+    using QGraphicsLineItem::QGraphicsLineItem;
+};
+
 void TrackView::initializeWaveformTiles()
 {
     const auto height = static_cast<int>(m_track->duration() * PixelsPerSecond);
@@ -207,6 +213,22 @@ TrackView::TrackView(Track *track, QWidget *parent)
         }
     });
     addAction(deleteAction);
+
+    m_markerItem = new MarkerItem;
+    m_markerItem->setPen(QPen(Qt::red));
+    m_markerItem->setVisible(m_track->isValid());
+    scene()->addItem(m_markerItem);
+
+    updatePlaybackPosition();
+    connect(m_track, &Track::playbackPositionUpdated, this, &TrackView::updatePlaybackPosition);
+}
+
+void TrackView::updatePlaybackPosition()
+{
+    const auto y = -PixelsPerSecond * m_track->playbackPosition();
+    m_markerItem->setLine(HorizMargin, y, HorizMargin + WaveformWidth + EventAreaWidth, y);
+
+    centerOn(sceneRect().center().x(), y);
 }
 
 void TrackView::trackDecodingFinished()
@@ -218,6 +240,8 @@ void TrackView::trackDecodingFinished()
     });
     connect(worker, &WaveformRenderer::finished, worker, &QObject::deleteLater);
     worker->start();
+
+    m_markerItem->setVisible(true);
 
     adjustSceneRect();
 }

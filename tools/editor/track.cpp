@@ -1,12 +1,15 @@
 #include "track.h"
 
 #include <QAudioDecoder>
+#include <QAudioOutput>
+#include <QBuffer>
 #include <QJsonArray>
 #include <QJsonObject>
 
 Track::Track(QObject *parent)
     : QObject(parent)
     , m_decoder(new QAudioDecoder(this))
+    , m_buffer(new QBuffer(this))
 {
     QAudioFormat format;
     format.setCodec("audio/x-raw");
@@ -178,6 +181,64 @@ void Track::setEventDuration(const Event *event, float duration)
     }));
     const_cast<Event *>(event)->duration = duration;
     emit eventChanged(event);
+}
+
+void Track::startPlayback()
+{
+    if (!isValid())
+        return;
+
+    QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
+    if (!info.isFormatSupported(m_format)) {
+        qWarning() << "Format not supported by audio backend, can't play audio";
+        return;
+    }
+
+    m_buffer->setData(QByteArray::fromRawData(reinterpret_cast<const char *>(m_samples.data()), m_samples.size() * sizeof(SampleType)));
+    m_buffer->open(QIODevice::ReadOnly);
+    m_output = new QAudioOutput(m_format, this);
+    m_output->setNotifyInterval(20);
+    connect(m_output, &QAudioOutput::stateChanged, this, &Track::outputStateChanged);
+    connect(m_output, &QAudioOutput::notify, this, &Track::playbackPositionUpdated);
+    m_output->start(m_buffer);
+}
+
+void Track::stopPlayback()
+{
+    if (!m_output)
+        return;
+    m_output->stop();
+}
+
+float Track::playbackPosition() const
+{
+    if (!m_output)
+        return 0.0f;
+    return static_cast<float>(m_output->elapsedUSecs()) * 1e-6;
+}
+
+void Track::outputStateChanged(QAudio::State state)
+{
+    const auto resetOutput = [this] {
+        m_output->stop();
+        m_buffer->close();
+        delete m_output;
+        m_output = nullptr;
+    };
+    switch (state) {
+    case QAudio::IdleState:
+        // finished playing
+        resetOutput();
+        break;
+    case QAudio::StoppedState:
+        if (m_output->error() != QAudio::NoError) {
+            qWarning() << "playback error:" << m_output->error();
+        }
+        resetOutput();
+        break;
+    default:
+        break;
+    }
 }
 
 namespace {

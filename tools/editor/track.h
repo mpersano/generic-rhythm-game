@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QAudio>
 #include <QAudioFormat>
 #include <QObject>
 
@@ -7,6 +8,8 @@
 
 class QAudioDecoder;
 class QJsonObject;
+class QAudioOutput;
+class QBuffer;
 
 class Track : public QObject
 {
@@ -54,6 +57,10 @@ public:
     void setEventDuration(const Event *event, float duration);
     std::vector<const Event *> events() const;
 
+    void startPlayback();
+    void stopPlayback();
+    float playbackPosition() const;
+
     QJsonObject save() const;
     void load(const QJsonObject &settings);
 
@@ -68,14 +75,18 @@ signals:
     void eventAboutToBeRemoved(const Event *event);
     void eventChanged(const Event *event);
     void eventsReset();
+    void playbackPositionUpdated();
 
 private:
     void audioBufferReady();
     void audioDecoderFinished();
+    void outputStateChanged(QAudio::State state);
 
     QString m_audioFile;
     QAudioDecoder *m_decoder;
     QAudioFormat m_format;
+    QAudioOutput *m_output = nullptr;
+    QBuffer *m_buffer = nullptr;
     std::vector<SampleType> m_samples;
     int m_eventTracks = 4;
     int m_beatsPerMinute = 100;

@@ -4,8 +4,11 @@
 
 #include <QFileInfo>
 #include <QFormLayout>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QPushButton>
 #include <QSpinBox>
+#include <QVBoxLayout>
 
 TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     : QWidget(parent)
@@ -15,13 +18,23 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     , m_rate(new QLabel(this))
     , m_eventTracks(new QSpinBox(this))
     , m_beatsPerMinute(new QSpinBox(this))
+    , m_play(new QPushButton(tr("Play"), this))
+    , m_stop(new QPushButton(tr("Stop"), this))
 {
-    auto *layout = new QFormLayout(this);
-    layout->addRow(QObject::tr("File"), m_file);
-    layout->addRow(QObject::tr("Duration"), m_duration);
-    layout->addRow(QObject::tr("Rate"), m_rate);
-    layout->addRow(QObject::tr("Event tracks"), m_eventTracks);
-    layout->addRow(QObject::tr("Beats per minute"), m_beatsPerMinute);
+    auto *layout = new QVBoxLayout(this);
+
+    auto *formLayout = new QFormLayout;
+    formLayout->addRow(tr("File"), m_file);
+    formLayout->addRow(tr("Duration"), m_duration);
+    formLayout->addRow(tr("Rate"), m_rate);
+    formLayout->addRow(tr("Event tracks"), m_eventTracks);
+    formLayout->addRow(tr("Beats per minute"), m_beatsPerMinute);
+    layout->addLayout(formLayout);
+
+    auto *playLayout = new QHBoxLayout(this);
+    playLayout->addWidget(m_play);
+    playLayout->addWidget(m_stop);
+    layout->addLayout(playLayout);
 
     auto updateFileName = [this] {
         m_file->setText(QFileInfo(m_track->audioFile()).fileName());
@@ -50,6 +63,9 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     m_beatsPerMinute->setValue(m_track->beatsPerMinute());
     connect(m_track, &Track::beatsPerMinuteChanged, m_beatsPerMinute, &QSpinBox::setValue);
     connect(m_beatsPerMinute, qOverload<int>(&QSpinBox::valueChanged), m_track, &Track::setBeatsPerMinute);
+
+    connect(m_play, &QPushButton::clicked, m_track, &Track::startPlayback);
+    connect(m_stop, &QPushButton::clicked, m_track, &Track::stopPlayback);
 }
 
 TrackInfoWidget::~TrackInfoWidget() = default;
