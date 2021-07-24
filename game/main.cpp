@@ -1,4 +1,5 @@
 #include "oggplayer.h"
+#include "track.h"
 
 #include <gx/glwindow.h>
 
@@ -6,6 +7,8 @@
 #include <AL/alc.h>
 #include <GLFW/glfw3.h>
 #include <spdlog/spdlog.h>
+
+using namespace std::string_literals;
 
 class GameWindow : public GX::GLWindow
 {
@@ -25,6 +28,7 @@ private:
     ALCdevice *m_alDevice = nullptr;
     ALCcontext *m_alContext = nullptr;
     std::unique_ptr<OggPlayer> m_player;
+    std::unique_ptr<Track> m_track;
 };
 
 GameWindow::GameWindow()
@@ -32,8 +36,15 @@ GameWindow::GameWindow()
     initializeAL();
 
     m_player = std::make_unique<OggPlayer>();
-    if (m_player->open("test.ogg"))
-        m_player->play();
+
+    const auto track = "test.json"s;
+
+    m_track = loadTrack(track);
+    if (m_track) {
+        spdlog::info("Loaded track: eventTracks={} beatsPerMinute={}, {} events", m_track->eventTracks, m_track->beatsPerMinute, m_track->events.size());
+        if (m_player->open(m_track->audioFile))
+            m_player->play();
+    }
 }
 
 GameWindow::~GameWindow()

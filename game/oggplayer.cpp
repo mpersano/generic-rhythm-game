@@ -23,7 +23,7 @@ bool OggPlayer::open(const std::string &path)
     int error = 0;
     m_vorbis = stb_vorbis_open_filename(path.c_str(), &error, nullptr);
     if (!m_vorbis) {
-        spdlog::error("Failed to open vorbis file: {}", error);
+        spdlog::error("Failed to open vorbis file {}: {}", path, error);
         return false;
     }
 

@@ -7,3 +7,6 @@ add_subdirectory(spdlog)
 set(ALSOFT_EXAMPLES OFF)
 set(ALSOFT_UTILS OFF)
 add_subdirectory(openal-soft)
+
+add_library(rapidjson INTERFACE)
+target_include_directories(rapidjson INTERFACE rapidjson/include)
