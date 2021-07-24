@@ -24,10 +24,10 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     layout->addRow(QObject::tr("Beats per minute"), m_beatsPerMinute);
 
     auto updateFileName = [this] {
-        m_file->setText(QFileInfo(m_track->fileName()).fileName());
+        m_file->setText(QFileInfo(m_track->audioFile()).fileName());
     };
     updateFileName();
-    connect(m_track, &Track::fileNameChanged, this, updateFileName);
+    connect(m_track, &Track::audioFileChanged, this, updateFileName);
 
     auto updateDuration = [this] {
         m_duration->setText(QObject::tr("%1 s").arg(m_track->duration(), 0, 'f', 2));

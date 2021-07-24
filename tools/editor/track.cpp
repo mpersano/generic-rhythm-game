@@ -1,6 +1,8 @@
 #include "track.h"
 
 #include <QAudioDecoder>
+#include <QJsonArray>
+#include <QJsonObject>
 
 Track::Track(QObject *parent)
     : QObject(parent)
@@ -20,19 +22,19 @@ Track::Track(QObject *parent)
 
 Track::~Track() = default;
 
-void Track::decode(const QString &fileName)
+void Track::decode(const QString &audioFile)
 {
-    m_fileName = fileName;
+    m_audioFile = audioFile;
 
     m_samples.clear();
     m_format = QAudioFormat();
     Q_ASSERT(!m_format.isValid());
 
-    emit fileNameChanged(fileName);
+    emit audioFileChanged(audioFile);
     emit durationChanged(duration());
     emit rateChanged(rate());
 
-    m_decoder->setSourceFilename(fileName);
+    m_decoder->setSourceFilename(audioFile);
     m_decoder->start();
 }
 
@@ -69,9 +71,9 @@ void Track::audioDecoderFinished()
     emit decodingFinished();
 }
 
-QString Track::fileName() const
+QString Track::audioFile() const
 {
-    return m_fileName;
+    return m_audioFile;
 }
 
 const Track::SampleType *Track::samples() const
@@ -153,4 +155,92 @@ void Track::removeEvent(const Event *event)
         return;
     emit eventAboutToBeRemoved(event);
     m_events.erase(it);
+}
+
+namespace {
+QString audioFileKey()
+{
+    return QLatin1String("audioFile");
+}
+
+QString eventTracksKey()
+{
+    return QLatin1String("eventTracks");
+}
+
+QString beatsPerMinuteKey()
+{
+    return QLatin1String("beatsPerMinute");
+}
+
+QString typeKey()
+{
+    return QLatin1String("type");
+}
+
+QString trackKey()
+{
+    return QLatin1String("track");
+}
+
+QString startKey()
+{
+    return QLatin1String("start");
+}
+
+QString durationKey()
+{
+    return QLatin1String("duration");
+}
+
+QString eventsKey()
+{
+    return QLatin1String("events");
+}
+} // namespace
+
+void Track::load(const QJsonObject &settings)
+{
+    const auto eventTracks = settings[eventTracksKey()].toInt();
+    setEventTracks(eventTracks);
+
+    const auto beatsPerMinute = settings[beatsPerMinuteKey()].toInt();
+    setBeatsPerMinute(beatsPerMinute);
+
+    m_events.clear();
+    const auto eventsArray = settings[eventsKey()].toArray();
+    std::transform(eventsArray.begin(), eventsArray.end(), std::back_inserter(m_events),
+                   [](const QJsonValue &value) {
+                       const auto eventSettings = value.toObject();
+                       const auto type = static_cast<Event::Type>(eventSettings[typeKey()].toInt());
+                       const auto track = eventSettings[trackKey()].toInt();
+                       const auto start = static_cast<float>(eventSettings[startKey()].toDouble());
+                       const auto duration = static_cast<float>(eventSettings[durationKey()].toDouble());
+                       return std::unique_ptr<Event>(new Event { type, track, start, duration });
+                   });
+    emit eventsReset();
+
+    const auto audioFile = settings[audioFileKey()].toString();
+    decode(audioFile);
+}
+
+QJsonObject Track::save() const
+{
+    QJsonObject settings;
+
+    settings[audioFileKey()] = m_audioFile;
+    settings[eventTracksKey()] = m_eventTracks;
+    settings[beatsPerMinuteKey()] = m_beatsPerMinute;
+    QJsonArray eventArray;
+    for (auto &event : m_events) {
+        QJsonObject eventSettings;
+        eventSettings[typeKey()] = static_cast<int>(event->type);
+        eventSettings[trackKey()] = event->track;
+        eventSettings[startKey()] = event->start;
+        eventSettings[durationKey()] = event->duration;
+        eventArray.append(eventSettings);
+    }
+    settings[eventsKey()] = eventArray;
+
+    return settings;
 }

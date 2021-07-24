@@ -3,6 +3,7 @@
 #include "track.h"
 
 #include <QGraphicsItem>
+#include <QStyleOptionGraphicsItem>
 
 #include <cmath>
 
@@ -25,12 +26,12 @@ QPointF eventPosition(const Track *track, int trackIndex, float time)
     return QPointF(x, y);
 }
 
-QBrush trackBrush(int trackIndex)
+QColor trackColor(int trackIndex)
 {
-    static const std::vector<QBrush> brushes = {
+    static const std::vector<QColor> colors = {
         Qt::red, Qt::yellow, Qt::cyan, Qt::magenta, Qt::green, Qt::gray
     };
-    return brushes[trackIndex];
+    return colors[trackIndex];
 }
 
 } // namespace
@@ -58,8 +59,7 @@ EventItem::EventItem(const Track *track, const Track::Event *event, QGraphicsIte
     , m_track(track)
     , m_event(event)
 {
-    setFlag(ItemIsMovable);
-    setFlag(ItemSendsGeometryChanges);
+    setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
     setPos(eventPosition(track, event->track, event->start));
 }
 
@@ -81,8 +81,11 @@ QVariant EventItem::itemChange(GraphicsItemChange change, const QVariant &value)
 
 void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
 {
+    auto color = trackColor(m_event->track);
+    if (option->state & QStyle::State_Selected)
+        color = color.darker(200);
     painter->setPen(Qt::NoPen);
-    painter->setBrush(trackBrush(m_event->track));
+    painter->setBrush(color);
     painter->drawEllipse(boundingRect());
 }
 
@@ -95,11 +98,12 @@ TrackView::TrackView(Track *track, QWidget *parent)
     connect(m_track, &Track::decodingFinished, this, &TrackView::adjustSceneRect);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
-    connect(m_track, &Track::eventAdded, this, [this](const Track::Event *event) {
+    auto addEvent = [this](const Track::Event *event) {
         auto *item = new EventItem(m_track, event);
         m_eventItems[event] = item;
         scene()->addItem(item);
-    });
+    };
+    connect(m_track, &Track::eventAdded, this, addEvent);
     connect(m_track, &Track::eventAboutToBeRemoved, this, [this](const Track::Event *event) {
         auto it = m_eventItems.find(event);
         if (it == m_eventItems.end())
@@ -108,10 +112,23 @@ TrackView::TrackView(Track *track, QWidget *parent)
         scene()->removeItem(item);
         delete item;
     });
+    auto removeAllEvents = [this] {
+        for (auto &[event, item] : m_eventItems) {
+            scene()->removeItem(item);
+            delete item;
+        }
+    };
+    connect(m_track, &Track::eventsReset, this, [this, removeAllEvents, addEvent] {
+        removeAllEvents();
+        for (const auto *event : m_track->events())
+            addEvent(event);
+    });
 }
 
 void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
 {
+    painter->fillRect(rect, Qt::darkBlue);
+
     if (m_track->sampleCount() == 0)
         return;
 
@@ -125,7 +142,6 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
     painter->save();
     painter->setRenderHints(QPainter::Antialiasing, true);
 
-    painter->fillRect(rect, Qt::darkBlue);
     painter->setPen(Qt::white);
 
     // waveform

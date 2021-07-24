@@ -6,6 +6,7 @@
 #include <memory>
 
 class QAudioDecoder;
+class QJsonObject;
 
 class Track : public QObject
 {
@@ -14,7 +15,7 @@ public:
     explicit Track(QObject *parent = nullptr);
     ~Track() override;
 
-    void decode(const QString &fileName);
+    void decode(const QString &audioFile);
     bool isDecoding() const;
 
     using SampleType = float;
@@ -22,7 +23,7 @@ public:
     const SampleType *samples() const;
     int sampleCount() const;
 
-    QString fileName() const;
+    QString audioFile() const;
 
     void setEventTracks(int eventTracks);
     int eventTracks() const;
@@ -49,21 +50,25 @@ public:
     void removeEvent(const Event *event);
     std::vector<const Event *> events() const;
 
+    QJsonObject save() const;
+    void load(const QJsonObject &settings);
+
 signals:
     void decodingFinished();
-    void fileNameChanged(const QString &fileName);
+    void audioFileChanged(const QString &audioFile);
     void rateChanged(int rate);
     void eventTracksChanged(int eventTracks);
     void beatsPerMinuteChanged(int beatsPerMinute);
     void durationChanged(float duration);
     void eventAdded(const Event *event);
     void eventAboutToBeRemoved(const Event *event);
+    void eventsReset();
 
 private:
     void audioBufferReady();
     void audioDecoderFinished();
 
-    QString m_fileName;
+    QString m_audioFile;
     QAudioDecoder *m_decoder;
     QAudioFormat m_format;
     std::vector<SampleType> m_samples;

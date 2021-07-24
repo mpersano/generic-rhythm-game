@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QWidget>
+#include <QMainWindow>
 
 class TrackView;
 class TrackInfoWidget;
@@ -8,7 +8,7 @@ class Track;
 
 class QGraphicsScene;
 
-class EditorWindow : public QWidget
+class EditorWindow : public QMainWindow
 {
     Q_OBJECT
 public:
