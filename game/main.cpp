@@ -25,12 +25,14 @@ private:
     void paintGL() override;
     void update(double elapsed) override;
     void keyPressEvent(int key) override;
+    void keyReleaseEvent(int key) override;
 
     ALCdevice *m_alDevice = nullptr;
     ALCcontext *m_alContext = nullptr;
     std::unique_ptr<OggPlayer> m_player;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
+    InputState m_inputState;
 };
 
 GameWindow::GameWindow()
@@ -94,17 +96,37 @@ void GameWindow::update(double elapsed)
 #if 0
     m_player->update();
 #endif
-    m_world->update(InputState::None, elapsed);
+    m_world->update(m_inputState, elapsed);
 }
 
 void GameWindow::keyPressEvent(int key)
 {
+#if 0
     if (key == GLFW_KEY_SPACE) {
         if (m_player->state() == OggPlayer::State::Playing) {
             m_player->stop();
         } else {
             m_player->play();
         }
+    }
+#endif
+    switch (key) {
+    case GLFW_KEY_SPACE:
+        m_inputState |= InputState::Fire1;
+        break;
+    default:
+        break;
+    }
+}
+
+void GameWindow::keyReleaseEvent(int key)
+{
+    switch (key) {
+    case GLFW_KEY_SPACE:
+        m_inputState &= ~InputState::Fire1;
+        break;
+    default:
+        break;
     }
 }
 

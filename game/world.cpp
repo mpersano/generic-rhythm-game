@@ -13,18 +13,6 @@
 
 namespace {
 
-struct Bezier {
-    glm::vec3 p0, p1, p2;
-
-    glm::vec3 eval(float t) const
-    {
-        const float k0 = (1.0f - t) * (1.0f - t);
-        const float k1 = 2.0f * (1.0f - t) * t;
-        const float k2 = t * t;
-        return k0 * p0 + k1 * p1 + k2 * p2;
-    }
-};
-
 const Material *debugMaterial()
 {
     return cachedMaterial(MaterialKey { ShaderManager::Program::Debug, {} });
@@ -49,7 +37,8 @@ void World::resize(int width, int height)
 
 void World::update(InputState inputState, float elapsed)
 {
-    m_angle += 0.5 * elapsed;
+    if ((inputState & InputState::Fire1) == InputState::None)
+        m_trackTime += elapsed;
 }
 
 void World::render() const
@@ -57,18 +46,71 @@ void World::render() const
     glClearColor(0, 0, 0, 0);
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+#if 0
     m_camera->setEye(glm::vec3(0, 0, 5));
     m_camera->setCenter(glm::vec3(0, 0, 0));
     m_camera->setUp(glm::vec3(0, 1, 0));
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    const auto angle = 0.5f * m_trackTime;
+    const auto modelMatrix = glm::rotate(glm::mat4(1), angle, glm::vec3(0, 1, 0));
+#else
+    const auto distance = 0.1f * m_trackTime;
 
-    const auto modelMatrix = glm::rotate(glm::mat4(1), m_angle, glm::vec3(0, 1, 0));
+    // reference: https://i.kym-cdn.com/photos/images/newsfeed/000/234/765/b7e.jpg
+
+    const auto partIndex = [this, distance]() -> std::size_t {
+        auto it = std::upper_bound(
+                m_pathParts.begin(), m_pathParts.end(),
+                distance,
+                [](float distance, const auto &part) {
+                    return distance < part.distance;
+                });
+        if (it == m_pathParts.begin())
+            return 0;
+        return std::distance(m_pathParts.begin(), it) - 1;
+    }();
+
+    assert(partIndex < m_pathParts.size() - 1);
+
+    const auto &curPart = m_pathParts[partIndex];
+    const auto &nextPart = m_pathParts[partIndex + 1];
+
+    assert(distance >= curPart.distance && distance < nextPart.distance);
+
+    const float t = (distance - curPart.distance) / (nextPart.distance - curPart.distance);
+    assert(t >= 0.0f && t < 1.0f);
+
+    const auto center = glm::mix(curPart.center, nextPart.center, t);
+
+#if 0
+    // tried to use quaternions to interpolate the orientation but ran it some weird discontinuities,
+    // let's do it the stupid way instead
+    const auto dir = glm::normalize(glm::mix(curPart.orientation[2], nextPart.orientation[2], t));
+    auto up = glm::normalize(glm::mix(curPart.orientation[0], nextPart.orientation[0], t));
+    const auto side = glm::normalize(glm::cross(dir, up));
+    up = glm::normalize(glm::cross(side, dir));
+#else
+    const auto q0 = glm::quat_cast(curPart.orientation);
+    const auto q1 = glm::quat_cast(nextPart.orientation);
+    const auto q = glm::mix(q0, q1, t);
+    const auto orientation = glm::mat3_cast(q);
+    const auto dir = orientation[2];
+    const auto up = orientation[0];
+#endif
+
+    m_camera->setEye(center + 0.3f * up - 0.2f * dir);
+    m_camera->setCenter(center);
+    m_camera->setUp(up);
+
+    const auto modelMatrix = glm::mat4(1);
+#endif
 
     m_renderer->begin();
-    for (auto &mesh : m_trackSegments)
-        m_renderer->render(mesh.get(), debugMaterial(), modelMatrix);
+    for (const auto &segment : m_trackSegments) {
+        m_renderer->render(segment->mesh.get(), debugMaterial(), modelMatrix);
+    }
     m_renderer->end();
 }
 
@@ -80,7 +122,7 @@ static void initializeSegment(std::vector<glm::vec3> &vertices, const glm::vec3 
     }
 
     const auto dist = glm::distance(to, from);
-    const auto perturb = glm::linearRand(0.0f, 0.5f * dist);
+    const auto perturb = glm::linearRand(0.25f, .5f) * dist;
 
     // perturb midpoint along a random vector orthogonal to the segment direction
     const auto dir = glm::normalize(to - from);
@@ -127,30 +169,54 @@ static std::unique_ptr<Mesh> makeSegmentMesh(const Bezier &segment)
 
 void World::initializeTrackMesh()
 {
-    constexpr auto LargeRadius = 5.0f;
-    constexpr auto InitialSegments = 5;
-    constexpr auto AngleDelta = 2.0f * M_PI / InitialSegments;
-
     std::vector<glm::vec3> controlPoints;
-    for (int i = 0; i < InitialSegments; ++i) {
-        const auto pointAt = [](float angle) {
-            return glm::vec3(std::cos(angle), std::sin(angle), 0.0f);
-        };
-        const auto start = pointAt(i * AngleDelta);
-        const auto end = pointAt((i + 1) * AngleDelta);
-        initializeSegment(controlPoints, start, end, 2);
-    }
+    initializeSegment(controlPoints, glm::vec3(-4, 0, 0), glm::vec3(4, 0, 0), 5);
 
-    for (size_t i = 0, size = controlPoints.size(); i < size; ++i) {
-        const auto prev = controlPoints[(i + size - 1) % size];
+    glm::vec3 currentUp(0, 0, 1);
+    std::optional<glm::vec3> prevCenter;
+    float distance = 0.0f;
+
+    for (size_t i = 1, size = controlPoints.size() - 1; i < size; ++i) {
+        const auto prev = controlPoints[i - 1];
         const auto cur = controlPoints[i];
-        const auto next = controlPoints[(i + 1) % size];
+        const auto next = controlPoints[i + 1];
 
-        const auto p0 = 0.5f * (prev + cur);
-        const auto p1 = cur;
-        const auto p2 = 0.5f * (cur + next);
+        const auto path = Bezier { 0.5f * (prev + cur), cur, 0.5f * (cur + next) };
 
-        const auto segment = Bezier { p0, p1, p2 };
-        m_trackSegments.push_back(makeSegmentMesh(segment));
+        auto segment = std::make_unique<Segment>();
+        segment->path = path;
+
+        constexpr auto SegmentVertices = 40;
+        constexpr auto TrackWidth = 0.1f;
+
+        std::vector<glm::vec3> vertices;
+        for (size_t j = 0; j < SegmentVertices; ++j) {
+            const auto t = static_cast<float>(j) / SegmentVertices;
+
+            const auto center = path.eval(t);
+
+            if (prevCenter != std::nullopt)
+                distance += glm::distance(*prevCenter, center);
+
+            const auto dir = glm::normalize(path.direction(t));
+            const auto side = glm::normalize(glm::cross(dir, currentUp));
+            const auto up = glm::normalize(glm::cross(side, dir));
+
+            const auto orientation = glm::mat3(up, side, dir);
+
+            m_pathParts.push_back(PathPart { orientation, center, distance });
+
+            vertices.push_back(center - side * TrackWidth);
+            vertices.push_back(center + side * TrackWidth);
+
+            currentUp = up;
+            prevCenter = center;
+        }
+
+        segment->mesh = makeLineMesh(vertices);
+        m_trackSegments.push_back(std::move(segment));
     }
+
+    spdlog::info("Initialized track, length={} segments={} parts={}",
+                 distance, m_trackSegments.size(), m_pathParts.size());
 }

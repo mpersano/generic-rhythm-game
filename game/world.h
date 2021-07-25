@@ -1,6 +1,9 @@
 #pragma once
 
+#include "bezier.h"
 #include "inputstate.h"
+
+#include <glm/gtx/quaternion.hpp>
 
 #include <memory>
 #include <vector>
@@ -26,6 +29,16 @@ private:
     std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<Camera> m_camera;
     std::unique_ptr<Renderer> m_renderer;
-    std::vector<std::unique_ptr<Mesh>> m_trackSegments;
-    float m_angle = 0.0f;
+    struct Segment {
+        Bezier path;
+        std::unique_ptr<Mesh> mesh;
+    };
+    std::vector<std::unique_ptr<Segment>> m_trackSegments;
+    struct PathPart {
+        glm::mat3 orientation;
+        glm::vec3 center;
+        float distance;
+    };
+    std::vector<PathPart> m_pathParts;
+    float m_trackTime = 0.0f;
 };
