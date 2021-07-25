@@ -1,5 +1,6 @@
 #include "oggplayer.h"
 #include "track.h"
+#include "world.h"
 
 #include <gx/glwindow.h>
 
@@ -28,6 +29,7 @@ private:
     ALCdevice *m_alDevice = nullptr;
     ALCcontext *m_alContext = nullptr;
     std::unique_ptr<OggPlayer> m_player;
+    std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
 };
 
@@ -35,6 +37,7 @@ GameWindow::GameWindow()
 {
     initializeAL();
 
+#if 0
     m_player = std::make_unique<OggPlayer>();
 
     const auto track = "test.json"s;
@@ -45,6 +48,7 @@ GameWindow::GameWindow()
         if (m_player->open(m_track->audioFile))
             m_player->play();
     }
+#endif
 }
 
 GameWindow::~GameWindow()
@@ -76,15 +80,21 @@ void GameWindow::releaseAL()
 
 void GameWindow::initializeGL()
 {
+    m_world = std::make_unique<World>();
+    m_world->resize(width(), height());
 }
 
 void GameWindow::paintGL()
 {
+    m_world->render();
 }
 
-void GameWindow::update(double /* elapsed */)
+void GameWindow::update(double elapsed)
 {
+#if 0
     m_player->update();
+#endif
+    m_world->update(InputState::None, elapsed);
 }
 
 void GameWindow::keyPressEvent(int key)

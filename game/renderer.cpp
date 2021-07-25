@@ -70,6 +70,7 @@ void Renderer::end()
             curTexture = texture;
         }
         m_shaderManager->setUniform(ShaderManager::ModelMatrix, drawCall.worldMatrix);
+        m_shaderManager->setUniform(ShaderManager::ModelViewProjection, m_camera->projectionMatrix() * m_camera->viewMatrix() * drawCall.worldMatrix);
         const auto normalMatrix = glm::transpose(glm::inverse(glm::mat3(drawCall.worldMatrix)));
         m_shaderManager->setUniform(ShaderManager::NormalMatrix, normalMatrix);
         drawCall.mesh->render();
