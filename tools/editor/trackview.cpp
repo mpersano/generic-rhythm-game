@@ -1,17 +1,20 @@
 #include "trackview.h"
 
 #include "track.h"
+#include "waveformrenderer.h"
 
 #include <QAction>
+#include <QDebug>
 #include <QGraphicsItem>
 #include <QStyleOptionGraphicsItem>
+#include <QThread>
 
 #include <cmath>
 
 namespace {
 constexpr auto HorizMargin = 20.0f;
 constexpr auto VertMargin = 20.0f;
-constexpr auto WaveformWidth = 200.0f;
+constexpr auto WaveformWidth = 100.0f;
 constexpr auto EventAreaWidth = 500.0f;
 constexpr auto PixelsPerSecond = 150.0f;
 
@@ -100,13 +103,65 @@ void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawEllipse(boundingRect());
 }
 
+void TrackView::initializeWaveformTiles()
+{
+    const auto height = static_cast<int>(m_track->duration() * PixelsPerSecond);
+
+    const auto *samples = m_track->samples();
+    const auto sampleCount = m_track->sampleCount();
+
+    const auto dySample = PixelsPerSecond / m_track->rate();
+
+    const auto maxSample = [samples, sampleCount] {
+        const auto it = std::max_element(samples, samples + sampleCount, [](float lhs, float rhs) {
+            return std::abs(lhs) < std::abs(rhs);
+        });
+        return std::abs(*it);
+    }();
+    const auto amplitude = 0.5f * WaveformWidth / (1.1f * maxSample);
+
+    m_waveformTiles.clear();
+
+    for (int yStart = 0; yStart < height; yStart += WaveformTileHeight) {
+        const auto yEnd = std::min(yStart + WaveformTileHeight, height);
+
+        const auto sampleStart = std::max(static_cast<int>((yStart / PixelsPerSecond) * m_track->rate()), 0);
+        const auto sampleEnd = std::min(static_cast<int>((yEnd / PixelsPerSecond) * m_track->rate()), sampleCount - 1);
+
+        const auto tileHeight = yEnd - yStart;
+        QImage image(WaveformWidth, tileHeight, QImage::Format_ARGB32);
+        image.fill(Qt::transparent);
+
+        std::vector<QPointF> polyline;
+        polyline.reserve(sampleCount);
+
+        for (size_t i = sampleStart; i <= sampleEnd; ++i) {
+            const auto sample = samples[i];
+
+            constexpr auto Amplitude = 0.5f * WaveformWidth;
+            constexpr auto CenterX = 0.5f * WaveformWidth;
+
+            const auto x = CenterX + sample * amplitude;
+            const auto y = tileHeight - static_cast<float>(i - sampleStart) * dySample;
+            polyline.emplace_back(x, y);
+        }
+
+        QPainter painter(&image);
+        painter.setRenderHints(QPainter::Antialiasing, true);
+        painter.setPen(Qt::white);
+        painter.drawPolyline(polyline.data(), polyline.size());
+
+        m_waveformTiles.push_back(QPixmap::fromImage(image));
+    }
+}
+
 TrackView::TrackView(Track *track, QWidget *parent)
     : QGraphicsView(parent)
     , m_track(track)
 {
     setScene(new QGraphicsScene(this));
     setRenderHint(QPainter::Antialiasing);
-    connect(m_track, &Track::decodingFinished, this, &TrackView::adjustSceneRect);
+    connect(m_track, &Track::decodingFinished, this, &TrackView::trackDecodingFinished);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
     auto addEvent = [this](const Track::Event *event) {
@@ -153,6 +208,19 @@ TrackView::TrackView(Track *track, QWidget *parent)
     addAction(deleteAction);
 }
 
+void TrackView::trackDecodingFinished()
+{
+    auto *worker = new WaveformRenderer(m_track, QSize(static_cast<int>(WaveformWidth), WaveformTileHeight), PixelsPerSecond, this);
+    connect(worker, &WaveformRenderer::tileReady, this, [this, worker](const QPixmap &pixmap) {
+        m_waveformTiles.push_back(pixmap);
+        viewport()->update();
+    });
+    connect(worker, &WaveformRenderer::finished, worker, &QObject::deleteLater);
+    worker->start();
+
+    adjustSceneRect();
+}
+
 void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
 {
     painter->fillRect(rect, Qt::darkBlue);
@@ -174,37 +242,14 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
 
     // waveform
     {
-        const auto *samples = m_track->samples();
-        const auto sampleCount = m_track->sampleCount();
-
-        const auto sampleStart = std::max(static_cast<int>((yStart / PixelsPerSecond) * m_track->rate()), 0);
-        const auto sampleEnd = std::min(static_cast<int>((yEnd / PixelsPerSecond) * m_track->rate()), sampleCount - 1);
-
-        const auto dySample = PixelsPerSecond / m_track->rate();
-
-        const auto maxSample = [samples, sampleCount] {
-            const auto it = std::max_element(samples, samples + sampleCount, [](float lhs, float rhs) {
-                return std::abs(lhs) < std::abs(rhs);
-            });
-            return std::abs(*it);
-        }();
-        const auto amplitude = 0.5f * WaveformWidth / (1.1f * maxSample);
-
-        std::vector<QPointF> polyline;
-        polyline.reserve(sampleEnd - sampleStart + 1);
-
-        for (size_t i = sampleStart; i <= sampleEnd; ++i) {
-            const auto sample = samples[i];
-
-            constexpr auto Amplitude = 0.5f * WaveformWidth;
-            constexpr auto CenterX = HorizMargin + Amplitude;
-
-            const auto x = CenterX + sample * amplitude;
-            const auto y = -static_cast<float>(i) * dySample;
-            polyline.emplace_back(x, y);
+        auto tileIndex = static_cast<int>(yStart) / WaveformTileHeight;
+        int y = -tileIndex * WaveformTileHeight;
+        while (tileIndex < m_waveformTiles.size() && y > -yEnd) {
+            const auto &tile = m_waveformTiles[tileIndex];
+            painter->drawPixmap(HorizMargin, y - tile.height(), tile);
+            y -= tile.height();
+            ++tileIndex;
         }
-
-        painter->drawPolyline(polyline.data(), polyline.size());
     }
 
     const auto snapTime = [](float t, float interval) {
