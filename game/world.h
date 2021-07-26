@@ -39,6 +39,7 @@ private:
         glm::mat4 transformMatrix() const;
     };
     PathState pathStateAt(float distance) const;
+    void updateCamera(bool snapToPosition);
 
     std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<Camera> m_camera;
@@ -60,5 +61,6 @@ private:
         };
         State state;
     };
+    glm::vec3 m_cameraPosition;
     std::vector<Beat> m_beats;
 };

@@ -45,6 +45,7 @@ World::World()
 {
     initializeBeatMeshes();
     initializeTrackMesh();
+    updateCamera(true);
 }
 
 World::~World() = default;
@@ -57,8 +58,37 @@ void World::resize(int width, int height)
 
 void World::update(InputState inputState, float elapsed)
 {
-    if ((inputState & InputState::Fire1) == InputState::None)
-        m_trackTime += elapsed;
+    if ((inputState & InputState::Fire1) == InputState::None) {
+        m_trackTime += 2.0f * elapsed;
+        updateCamera(false);
+    }
+}
+
+void World::updateCamera(bool snapToPosition)
+{
+    const auto distance = Speed * m_trackTime;
+    const auto state = pathStateAt(distance);
+
+    const auto transform = state.transformMatrix();
+
+    constexpr auto EyeOffset = glm::vec4(.3f, 0.f, -.2f, 1.0f);
+    const auto wantedPosition = glm::vec3(transform * EyeOffset);
+
+    if (snapToPosition) {
+        m_cameraPosition = wantedPosition;
+    } else {
+        constexpr auto CameraSpringiness = 0.15f;
+        m_cameraPosition = glm::mix(m_cameraPosition, wantedPosition, CameraSpringiness);
+    }
+
+    constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .4f, 1.0f);
+    const auto center = glm::vec3(transform * CenterOffset);
+
+    const auto up = state.up();
+
+    m_camera->setEye(m_cameraPosition);
+    m_camera->setCenter(center);
+    m_camera->setUp(up);
 }
 
 void World::render() const
@@ -83,23 +113,6 @@ void World::render() const
     const auto angle = 0.5f * m_trackTime;
     const auto modelMatrix = glm::rotate(glm::mat4(1), angle, glm::vec3(0, 1, 0));
 #else
-    const auto distance = Speed * m_trackTime;
-    const auto state = pathStateAt(distance);
-
-    const auto transform = state.transformMatrix();
-
-    constexpr auto EyeOffset = glm::vec4(.3f, 0.f, -.2f, 1.0f);
-    const auto eye = glm::vec3(transform * EyeOffset);
-
-    constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .3f, 1.0f);
-    const auto center = glm::vec3(transform * CenterOffset);
-
-    const auto up = state.up();
-
-    m_camera->setEye(eye);
-    m_camera->setCenter(center);
-    m_camera->setUp(up);
-
     const auto modelMatrix = glm::mat4(1);
 #endif
 
