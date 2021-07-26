@@ -28,6 +28,7 @@ public:
 private:
     void initializeTrackMesh();
     void initializeBeatMeshes();
+    void initializeMarkerMesh();
     struct PathState
     {
         glm::mat3 orientation;
@@ -51,6 +52,7 @@ private:
     };
     std::vector<PathPart> m_pathParts;
     std::unique_ptr<Mesh> m_beatMesh;
+    std::unique_ptr<Mesh> m_markerMesh;
     float m_trackTime = 0.0f;
     const Track *m_track;
     struct Beat {
@@ -62,5 +64,6 @@ private:
         State state;
     };
     glm::vec3 m_cameraPosition;
+    glm::mat4 m_markerTransform;
     std::vector<Beat> m_beats;
 };

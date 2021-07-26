@@ -52,6 +52,7 @@ World::World()
     , m_renderer(new Renderer(m_shaderManager.get(), m_camera.get()))
 {
     initializeBeatMeshes();
+    initializeMarkerMesh();
     initializeTrackMesh();
     updateCamera(true);
 }
@@ -89,7 +90,8 @@ void World::updateCamera(bool snapToPosition)
         m_cameraPosition = glm::mix(m_cameraPosition, wantedPosition, CameraSpringiness);
     }
 
-    constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .4f, 1.0f);
+    // constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .4f, 1.0f);
+    constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .2f, 1.0f);
     const auto center = glm::vec3(transform * CenterOffset);
 
     const auto up = state.up();
@@ -97,6 +99,8 @@ void World::updateCamera(bool snapToPosition)
     m_camera->setEye(m_cameraPosition);
     m_camera->setCenter(center);
     m_camera->setUp(up);
+
+    m_markerTransform = transform;
 }
 
 void World::render() const
@@ -128,6 +132,7 @@ void World::render() const
     for (const auto &beat : m_beats) {
         m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
     }
+    m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
     m_renderer->end();
 }
 
@@ -270,6 +275,37 @@ void World::initializeTrackMesh()
 void World::initializeBeatMeshes()
 {
     m_beatMesh = loadMesh(meshPath("beat.obj"));
+}
+
+void World::initializeMarkerMesh()
+{
+    constexpr auto Left = -0.5f * TrackWidth;
+    constexpr auto Right = 0.5f * TrackWidth;
+
+    constexpr auto Thick = 0.025f;
+    constexpr auto Height = 0.01f;
+
+    constexpr auto Bottom = -0.5f * Thick;
+    constexpr auto Top = 0.5f * Thick;
+
+    static const std::vector<glm::vec3> vertices = {
+        { Height, Left, Bottom },
+        { Height, Right, Bottom },
+        { Height, Left, Top },
+        { Height, Right, Top },
+    };
+
+    static const std::vector<Mesh::VertexAttribute> attributes = {
+        { 3, GL_FLOAT, 0 }
+    };
+
+    m_markerMesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
+    m_markerMesh->setVertexCount(vertices.size());
+    m_markerMesh->setVertexSize(sizeof(glm::vec3));
+    m_markerMesh->setVertexAttributes(attributes);
+
+    m_markerMesh->initialize();
+    m_markerMesh->setVertexData(vertices.data());
 }
 
 void World::initializeLevel(const Track *track)
