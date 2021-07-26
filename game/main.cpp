@@ -32,7 +32,7 @@ private:
     std::unique_ptr<OggPlayer> m_player;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
-    InputState m_inputState;
+    InputState m_inputState = InputState::None;
 };
 
 GameWindow::GameWindow()
