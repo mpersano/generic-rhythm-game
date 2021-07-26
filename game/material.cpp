@@ -26,23 +26,3 @@ GX::GL::Texture *cachedTexture(const std::string &textureName)
     }
     return it->second.get();
 }
-
-Material *cachedMaterial(const MaterialKey &key)
-{
-    struct KeyHasher {
-        std::size_t operator()(const MaterialKey &key) const
-        {
-            std::size_t hash = 17;
-            hash = hash * 31 + static_cast<std::size_t>(key.program);
-            hash = hash * 31 + std::hash<std::string>()(key.textureName);
-            return hash;
-        }
-    };
-    static std::unordered_map<MaterialKey, std::unique_ptr<Material>, KeyHasher> cache;
-    auto it = cache.find(key);
-    if (it == cache.end()) {
-        auto material = std::unique_ptr<Material>(new Material { key.program, cachedTexture(key.textureName) });
-        it = cache.emplace(key, std::move(material)).first;
-    }
-    return it->second.get();
-}

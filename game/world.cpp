@@ -20,17 +20,20 @@ namespace {
 
 const Material *trackMaterial()
 {
-    return cachedMaterial(MaterialKey { ShaderManager::Program::Decal, "track.png"s });
+    static const Material material { ShaderManager::Program::Decal, cachedTexture("track.png"s) };
+    return &material;
 }
 
 const Material *beatMaterial()
 {
-    return cachedMaterial(MaterialKey { ShaderManager::Program::Decal, "beat.png"s });
+    static const Material material { ShaderManager::Program::Decal, cachedTexture("beat.png"s) };
+    return &material;
 }
 
 const Material *debugMaterial()
 {
-    return cachedMaterial(MaterialKey { ShaderManager::Program::Debug, {} });
+    static const Material material { ShaderManager::Program::Debug, nullptr };
+    return &material;
 }
 
 std::string meshPath(const std::string &basename)
