@@ -32,6 +32,11 @@ private:
     {
         glm::mat3 orientation;
         glm::vec3 center;
+
+        glm::vec3 up() const { return orientation[0]; }
+        glm::vec3 side() const { return orientation[1]; }
+        glm::vec3 direction() const { return orientation[2]; }
+        glm::mat4 transformMatrix() const;
     };
     PathState pathStateAt(float distance) const;
 
@@ -40,13 +45,8 @@ private:
     std::unique_ptr<Renderer> m_renderer;
     std::vector<std::unique_ptr<Mesh>> m_trackSegments;
     struct PathPart {
-        glm::mat3 orientation;
-        glm::vec3 center;
+        PathState state;
         float distance;
-
-        glm::vec3 up() const { return orientation[0]; }
-        glm::vec3 side() const { return orientation[1]; }
-        glm::vec3 direction() const { return orientation[2]; }
     };
     std::vector<PathPart> m_pathParts;
     std::unique_ptr<Mesh> m_beatMesh;

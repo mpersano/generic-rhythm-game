@@ -85,11 +85,18 @@ void World::render() const
 #else
     const auto distance = Speed * m_trackTime;
     const auto state = pathStateAt(distance);
-    const auto &center = state.center;
-    const auto dir = state.orientation[2];
-    const auto up = state.orientation[0];
 
-    m_camera->setEye(center + 0.3f * up - 0.2f * dir);
+    const auto transform = state.transformMatrix();
+
+    constexpr auto EyeOffset = glm::vec4(.3f, 0.f, -.2f, 1.0f);
+    const auto eye = glm::vec3(transform * EyeOffset);
+
+    constexpr auto CenterOffset = glm::vec4(0.f, 0.f, .3f, 1.0f);
+    const auto center = glm::vec3(transform * CenterOffset);
+
+    const auto up = state.up();
+
+    m_camera->setEye(eye);
     m_camera->setCenter(center);
     m_camera->setUp(up);
 
@@ -132,10 +139,10 @@ World::PathState World::pathStateAt(float distance) const
     const float t = (distance - curPart.distance) / (nextPart.distance - curPart.distance);
     assert(t >= 0.0f && t < 1.0f);
 
-    const auto center = glm::mix(curPart.center, nextPart.center, t);
+    const auto center = glm::mix(curPart.state.center, nextPart.state.center, t);
 
-    const auto q0 = glm::quat_cast(curPart.orientation);
-    const auto q1 = glm::quat_cast(nextPart.orientation);
+    const auto q0 = glm::quat_cast(curPart.state.orientation);
+    const auto q1 = glm::quat_cast(nextPart.state.orientation);
     const auto q = glm::mix(q0, q1, t);
     const auto orientation = glm::mat3_cast(q);
 
@@ -217,7 +224,7 @@ void World::initializeTrackMesh()
 
             const auto orientation = glm::mat3(up, side, dir);
 
-            m_pathParts.push_back(PathPart { orientation, center, distance });
+            m_pathParts.push_back(PathPart { { orientation, center }, distance });
 
             currentUp = up;
             prevCenter = center;
@@ -231,8 +238,8 @@ void World::initializeTrackMesh()
         for (size_t j = i, end = std::min(size - 1, i + VertsPerSegment); j <= end; ++j) {
             const auto &part = m_pathParts[j];
             const auto texU = 6.0f * part.distance;
-            vertices.push_back({ part.center - part.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU) });
-            vertices.push_back({ part.center + part.side() * 0.5f * TrackWidth, glm::vec2(2.0f, texU) });
+            vertices.push_back({ part.state.center - part.state.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU) });
+            vertices.push_back({ part.state.center + part.state.side() * 0.5f * TrackWidth, glm::vec2(2.0f, texU) });
         }
         auto mesh = makeTrackMesh(vertices);
         m_trackSegments.push_back(std::move(mesh));
@@ -258,17 +265,22 @@ void World::initializeLevel(const Track *track)
                        const auto distance = Speed * event.start;
 
                        const auto pathState = pathStateAt(distance);
-                       const auto side = pathState.orientation[1];
 
                        const auto x = -0.5f * TrackWidth + (event.track + 1) * TrackWidth / (track->eventTracks + 1);
-                       const auto position = pathState.center + side * x;
+                       const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, x, 0));
 
-                       const auto translate = glm::translate(glm::mat4(1), position);
                        const auto scale = glm::scale(glm::mat4(1), glm::vec3(.01));
-                       const auto rotation = glm::mat4(pathState.orientation);
-                       const auto transform = translate * rotation * scale;
+
+                       const auto transform = pathState.transformMatrix() * translate * scale;
 
                        return { event.start, transform, Beat::State::Active };
                    });
     spdlog::info("drawing {} beats", m_beats.size());
+}
+
+glm::mat4 World::PathState::transformMatrix() const
+{
+    const auto translate = glm::translate(glm::mat4(1), center);
+    const auto rotation = glm::mat4(orientation);
+    return translate * rotation;
 }
