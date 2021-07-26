@@ -20,7 +20,7 @@ GX::GL::Texture *cachedTexture(const std::string &textureName)
         return nullptr;
     static std::unordered_map<std::string, std::unique_ptr<GX::GL::Texture>> cache;
     auto it = cache.find(textureName);
-    if (it != cache.end()) {
+    if (it == cache.end()) {
         auto texture = std::make_unique<GX::GL::Texture>(GX::loadPixmap(texturePath(textureName)));
         it = cache.emplace(textureName, std::move(texture)).first;
     }

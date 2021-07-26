@@ -84,6 +84,7 @@ int ShaderManager::uniformLocation(Uniform id)
             "viewMatrix",
             "modelMatrix",
             "normalMatrix",
+            "baseColorTexture",
             // clang-format on
         };
         static_assert(std::extent_v<decltype(uniformNames)> == NumUniforms, "expected number of uniforms to match");

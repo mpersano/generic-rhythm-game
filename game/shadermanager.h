@@ -27,6 +27,7 @@ public:
         ViewMatrix,
         ModelMatrix,
         NormalMatrix,
+        BaseColorTexture,
         NumUniforms
     };
 
