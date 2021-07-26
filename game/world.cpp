@@ -23,6 +23,11 @@ const Material *trackMaterial()
     return cachedMaterial(MaterialKey { ShaderManager::Program::Decal, "track.png"s });
 }
 
+const Material *beatMaterial()
+{
+    return cachedMaterial(MaterialKey { ShaderManager::Program::Decal, "beat.png"s });
+}
+
 const Material *debugMaterial()
 {
     return cachedMaterial(MaterialKey { ShaderManager::Program::Debug, {} });
@@ -121,7 +126,7 @@ void World::render() const
         m_renderer->render(mesh.get(), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
-        m_renderer->render(m_beatMesh.get(), debugMaterial(), beat.transform);
+        m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
     }
     m_renderer->end();
 }
@@ -279,10 +284,11 @@ void World::initializeLevel(const Track *track)
 
                        const auto pathState = pathStateAt(distance);
 
-                       const auto x = -0.5f * TrackWidth + (event.track + 1) * TrackWidth / (track->eventTracks + 1);
+                       const auto laneWidth = TrackWidth / track->eventTracks;
+                       const auto x = -0.5f * TrackWidth + (event.track + 0.5f) * laneWidth;
                        const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, x, 0));
 
-                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(.01));
+                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.45f * laneWidth));
 
                        const auto transform = pathState.transformMatrix() * translate * scale;
 

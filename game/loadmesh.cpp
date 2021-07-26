@@ -12,6 +12,7 @@
 
 struct MeshVertex {
     glm::vec3 position;
+    glm::vec2 texcoord;
     glm::vec3 normal;
 };
 
@@ -19,6 +20,7 @@ static std::unique_ptr<Mesh> makeMesh(const std::vector<MeshVertex> &vertices)
 {
     static const std::vector<Mesh::VertexAttribute> attributes = {
         { 3, GL_FLOAT, offsetof(MeshVertex, position) },
+        { 2, GL_FLOAT, offsetof(MeshVertex, texcoord) },
         { 3, GL_FLOAT, offsetof(MeshVertex, normal) },
     };
 
@@ -42,9 +44,11 @@ std::unique_ptr<Mesh> loadMesh(const std::string &path)
     }
 
     std::vector<glm::vec3> positions;
+    std::vector<glm::vec2> texcoords;
     std::vector<glm::vec3> normals;
     struct Vertex {
         int positionIndex;
+        int texcoordIndex;
         int normalIndex;
     };
     using Face = std::vector<Vertex>;
@@ -59,6 +63,9 @@ std::unique_ptr<Mesh> loadMesh(const std::string &path)
         if (tokens.front() == "v") {
             assert(tokens.size() == 4);
             positions.emplace_back(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
+        } else if (tokens.front() == "vt") {
+            assert(tokens.size() == 3);
+            texcoords.emplace_back(std::stof(tokens[1]), std::stof(tokens[2]));
         } else if (tokens.front() == "vn") {
             assert(tokens.size() == 4);
             normals.emplace_back(std::stof(tokens[1]), std::stof(tokens[2]), std::stof(tokens[3]));
@@ -68,7 +75,7 @@ std::unique_ptr<Mesh> loadMesh(const std::string &path)
                 std::vector<std::string> components;
                 boost::split(components, *it, boost::is_any_of("/"), boost::token_compress_off);
                 assert(components.size() == 3);
-                f.push_back({ std::stoi(components[0]) - 1, std::stoi(components[2]) - 1 });
+                f.push_back({ std::stoi(components[0]) - 1, std::stoi(components[1]) - 1, std::stoi(components[2]) - 1 });
             }
             faces.push_back(f);
         }
@@ -80,10 +87,11 @@ std::unique_ptr<Mesh> loadMesh(const std::string &path)
 
     for (const auto &face : faces) {
         for (size_t i = 1; i < face.size() - 1; ++i) {
-            const auto toVertex = [i, &positions, &normals](const auto &vertex) {
+            const auto toVertex = [i, &positions, &texcoords, &normals](const auto &vertex) {
                 assert(vertex.positionIndex < positions.size());
+                assert(vertex.texcoordIndex < texcoords.size());
                 assert(vertex.normalIndex < normals.size());
-                return MeshVertex { positions[vertex.positionIndex], normals[vertex.normalIndex] };
+                return MeshVertex { positions[vertex.positionIndex], texcoords[vertex.texcoordIndex], normals[vertex.normalIndex] };
             };
             const auto v0 = toVertex(face[0]);
             const auto v1 = toVertex(face[i]);
