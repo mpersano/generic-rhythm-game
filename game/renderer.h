@@ -25,6 +25,9 @@ public:
     void end();
 
 private:
+    template<typename Iterator>
+    void render(Iterator first, Iterator last) const;
+
     int m_width = 1;
     int m_height = 1;
     struct DrawCall {

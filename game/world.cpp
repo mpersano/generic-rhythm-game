@@ -20,19 +20,19 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::Decal, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
 const Material *beatMaterial()
 {
-    static const Material material { ShaderManager::Program::Decal, cachedTexture("beat.png"s) };
+    static const Material material { ShaderManager::Program::Decal, Material::None, cachedTexture("beat.png"s) };
     return &material;
 }
 
 const Material *debugMaterial()
 {
-    static const Material material { ShaderManager::Program::Debug, nullptr };
+    static const Material material { ShaderManager::Program::Debug, Material::None, nullptr };
     return &material;
 }
 
@@ -106,9 +106,6 @@ void World::render() const
 
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // TODO: will need to sort track pieces back-to-front for proper alpha blending, is this even a good idea?
     // there are only 3 days left and there isn't even any gameplay code yet

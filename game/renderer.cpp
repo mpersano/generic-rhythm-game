@@ -34,38 +34,61 @@ void Renderer::render(const Mesh *mesh, const Material *material, const glm::mat
     m_drawCalls.push_back({ mesh, material, worldMatrix });
 }
 
-void Renderer::end()
+template<typename Iterator>
+void Renderer::render(Iterator first, Iterator last) const
 {
-    const auto &frustum = m_camera->frustum();
-
-    std::sort(m_drawCalls.begin(), m_drawCalls.end(), [](const auto &lhs, const auto &rhs) {
+    std::sort(first, last, [](const auto &lhs, const auto &rhs) {
         return std::tie(lhs.material->program, lhs.material->texture) < std::tie(rhs.material->program, rhs.material->texture);
     });
 
     std::optional<ShaderManager::Program> curProgram;
     const GX::GL::Texture *curTexture = nullptr;
 
-    for (const auto &drawCall : m_drawCalls) {
+    for (auto it = first; it != last; ++it) {
 #if 0
         if (!frustum.contains(drawCall.mesh->boundingBox(), drawCall.worldMatrix)) {
             continue;
         }
 #endif
+        const auto &drawCall = *it;
         const auto *material = drawCall.material;
+
         if (const auto program = material->program; curProgram == std::nullopt || *curProgram != program) {
             m_shaderManager->useProgram(program);
             m_shaderManager->setUniform(ShaderManager::ProjectionMatrix, m_camera->projectionMatrix());
             m_shaderManager->setUniform(ShaderManager::ViewMatrix, m_camera->viewMatrix());
             curProgram = program;
         }
+
         if (const auto *texture = material->texture; curTexture != texture) {
             texture->bind();
             curTexture = texture;
         }
+
         m_shaderManager->setUniform(ShaderManager::ModelMatrix, drawCall.worldMatrix);
         m_shaderManager->setUniform(ShaderManager::ModelViewProjection, m_camera->projectionMatrix() * m_camera->viewMatrix() * drawCall.worldMatrix);
         const auto normalMatrix = glm::transpose(glm::inverse(glm::mat3(drawCall.worldMatrix)));
         m_shaderManager->setUniform(ShaderManager::NormalMatrix, normalMatrix);
         drawCall.mesh->render();
     }
+}
+
+void Renderer::end()
+{
+    auto it = std::partition(m_drawCalls.begin(), m_drawCalls.end(), [](const DrawCall &drawCall) {
+        return (drawCall.material->flags & Material::Transparent) == 0;
+    });
+
+    // render solid meshes
+
+    glDisable(GL_BLEND);
+    render(m_drawCalls.begin(), it);
+
+    // render transparent meshes
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE); // disable writing to depth buffer
+    render(it, m_drawCalls.end());
+    glDepthMask(GL_TRUE);
 }
