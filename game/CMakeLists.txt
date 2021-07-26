@@ -20,6 +20,8 @@ set(game_SOURCES
     renderer.h
     world.cpp
     world.h
+    loadmesh.cpp
+    loadmesh.h
 )
 
 add_executable(game ${game_SOURCES})

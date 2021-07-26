@@ -39,12 +39,10 @@ GameWindow::GameWindow()
 {
     initializeAL();
 
-#if 0
     m_player = std::make_unique<OggPlayer>();
 
-    const auto track = "test.json"s;
-
-    m_track = loadTrack(track);
+    m_track = loadTrack("assets/tracks/track.json"s);
+#if 0
     if (m_track) {
         spdlog::info("Loaded track: eventTracks={} beatsPerMinute={}, {} events", m_track->eventTracks, m_track->beatsPerMinute, m_track->events.size());
         if (m_player->open(m_track->audioFile))
@@ -84,6 +82,7 @@ void GameWindow::initializeGL()
 {
     m_world = std::make_unique<World>();
     m_world->resize(width(), height());
+    m_world->initializeLevel(m_track.get());
 }
 
 void GameWindow::paintGL()

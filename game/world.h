@@ -11,6 +11,7 @@ class ShaderManager;
 class Camera;
 class Renderer;
 class Mesh;
+class Track;
 
 class World
 {
@@ -22,8 +23,11 @@ public:
     void update(InputState inputState, float elapsed);
     void render() const;
 
+    void initializeLevel(const Track *track);
+
 private:
     void initializeTrackMesh();
+    void initializeBeatMeshes();
     struct PathState
     {
         glm::mat3 orientation;
@@ -45,5 +49,16 @@ private:
         glm::vec3 direction() const { return orientation[2]; }
     };
     std::vector<PathPart> m_pathParts;
+    std::unique_ptr<Mesh> m_beatMesh;
     float m_trackTime = 0.0f;
+    const Track *m_track;
+    struct Beat {
+        float start;
+        glm::mat4 transform;
+        enum class State {
+            Active
+        };
+        State state;
+    };
+    std::vector<Beat> m_beats;
 };

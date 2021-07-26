@@ -2,10 +2,12 @@
 
 #include "bezier.h"
 #include "camera.h"
+#include "loadmesh.h"
 #include "material.h"
 #include "mesh.h"
 #include "renderer.h"
 #include "shadermanager.h"
+#include "track.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
@@ -20,6 +22,20 @@ const Material *trackMaterial()
 {
     return cachedMaterial(MaterialKey { ShaderManager::Program::Decal, "track.png"s });
 }
+
+const Material *debugMaterial()
+{
+    return cachedMaterial(MaterialKey { ShaderManager::Program::Debug, {} });
+}
+
+std::string meshPath(const std::string &basename)
+{
+    return std::string("assets/meshes/") + basename;
+}
+
+constexpr auto Speed = 0.15f;
+constexpr auto TrackWidth = 0.2f;
+
 } // namespace
 
 World::World()
@@ -27,6 +43,7 @@ World::World()
     , m_camera(new Camera)
     , m_renderer(new Renderer(m_shaderManager.get(), m_camera.get()))
 {
+    initializeBeatMeshes();
     initializeTrackMesh();
 }
 
@@ -66,7 +83,7 @@ void World::render() const
     const auto angle = 0.5f * m_trackTime;
     const auto modelMatrix = glm::rotate(glm::mat4(1), angle, glm::vec3(0, 1, 0));
 #else
-    const auto distance = 0.25f * m_trackTime;
+    const auto distance = Speed * m_trackTime;
     const auto state = pathStateAt(distance);
     const auto &center = state.center;
     const auto dir = state.orientation[2];
@@ -82,6 +99,9 @@ void World::render() const
     m_renderer->begin();
     for (const auto &mesh : m_trackSegments) {
         m_renderer->render(mesh.get(), trackMaterial(), modelMatrix);
+    }
+    for (const auto &beat : m_beats) {
+        m_renderer->render(m_beatMesh.get(), debugMaterial(), beat.transform);
     }
     m_renderer->end();
 }
@@ -143,21 +163,21 @@ static void initializeSegment(std::vector<glm::vec3> &vertices, const glm::vec3 
     initializeSegment(vertices, mid, to, level - 1);
 }
 
-struct MeshVertex {
+struct TrackMeshVertex {
     glm::vec3 position;
     glm::vec2 texcoord;
 };
 
-static std::unique_ptr<Mesh> makeLineMesh(const std::vector<MeshVertex> &vertices)
+static std::unique_ptr<Mesh> makeTrackMesh(const std::vector<TrackMeshVertex> &vertices)
 {
     static const std::vector<Mesh::VertexAttribute> attributes = {
-        { 3, GL_FLOAT, offsetof(MeshVertex, position) },
-        { 2, GL_FLOAT, offsetof(MeshVertex, texcoord) },
+        { 3, GL_FLOAT, offsetof(TrackMeshVertex, position) },
+        { 2, GL_FLOAT, offsetof(TrackMeshVertex, texcoord) },
     };
 
     auto mesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
     mesh->setVertexCount(vertices.size());
-    mesh->setVertexSize(sizeof(MeshVertex));
+    mesh->setVertexSize(sizeof(TrackMeshVertex));
     mesh->setVertexAttributes(attributes);
 
     mesh->initialize();
@@ -169,7 +189,7 @@ static std::unique_ptr<Mesh> makeLineMesh(const std::vector<MeshVertex> &vertice
 void World::initializeTrackMesh()
 {
     std::vector<glm::vec3> controlPoints;
-    initializeSegment(controlPoints, glm::vec3(-4, 0, 0), glm::vec3(4, 0, 0), 5);
+    initializeSegment(controlPoints, glm::vec3(-10, 0, 0), glm::vec3(10, 0, 0), 5);
 
     glm::vec3 currentUp(0, 0, 1);
     std::optional<glm::vec3> prevCenter;
@@ -205,20 +225,50 @@ void World::initializeTrackMesh()
     }
 
     constexpr auto VertsPerSegment = 20;
-    constexpr auto TrackWidth = 0.1f;
 
     for (size_t i = 0, size = m_pathParts.size(); i < size; i += VertsPerSegment) {
-        std::vector<MeshVertex> vertices;
+        std::vector<TrackMeshVertex> vertices;
         for (size_t j = i, end = std::min(size - 1, i + VertsPerSegment); j <= end; ++j) {
             const auto &part = m_pathParts[j];
             const auto texU = 6.0f * part.distance;
-            vertices.push_back({ part.center - part.side() * TrackWidth, glm::vec2(0.0f, texU) });
-            vertices.push_back({ part.center + part.side() * TrackWidth, glm::vec2(2.0f, texU) });
+            vertices.push_back({ part.center - part.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU) });
+            vertices.push_back({ part.center + part.side() * 0.5f * TrackWidth, glm::vec2(2.0f, texU) });
         }
-        auto mesh = makeLineMesh(vertices);
+        auto mesh = makeTrackMesh(vertices);
         m_trackSegments.push_back(std::move(mesh));
     }
 
     spdlog::info("Initialized track, length={} segments={} parts={}",
                  distance, m_trackSegments.size(), m_pathParts.size());
+}
+
+void World::initializeBeatMeshes()
+{
+    m_beatMesh = loadMesh(meshPath("beat.obj"));
+}
+
+void World::initializeLevel(const Track *track)
+{
+    m_track = track;
+
+    m_beats.clear();
+    const auto &events = track->events;
+    std::transform(events.begin(), events.end(), std::back_inserter(m_beats),
+                   [this, track](const Track::Event &event) -> Beat {
+                       const auto distance = Speed * event.start;
+
+                       const auto pathState = pathStateAt(distance);
+                       const auto side = pathState.orientation[1];
+
+                       const auto x = -0.5f * TrackWidth + (event.track + 1) * TrackWidth / (track->eventTracks + 1);
+                       const auto position = pathState.center + side * x;
+
+                       const auto translate = glm::translate(glm::mat4(1), position);
+                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(.01));
+                       const auto rotation = glm::mat4(pathState.orientation);
+                       const auto transform = translate * rotation * scale;
+
+                       return { event.start, transform, Beat::State::Active };
+                   });
+    spdlog::info("drawing {} beats", m_beats.size());
 }
