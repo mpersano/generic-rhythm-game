@@ -36,13 +36,6 @@ void Renderer::render(const Mesh *mesh, const Material *material, const glm::mat
 
 void Renderer::end()
 {
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    glDisable(GL_CULL_FACE);
-
-    glViewport(0, 0, m_width, m_height);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     const auto &frustum = m_camera->frustum();
 
     std::sort(m_drawCalls.begin(), m_drawCalls.end(), [](const auto &lhs, const auto &rhs) {

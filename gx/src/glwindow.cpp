@@ -178,6 +178,8 @@ void GLWindow::renderLoop()
         curTime = now;
 
         update(elapsed);
+
+        glViewport(0, 0, m_width, m_height);
         paintGL();
 
         glfwSwapBuffers(m_window);
