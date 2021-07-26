@@ -18,6 +18,11 @@ Track::Track(QObject *parent)
 
     connect(m_decoder, &QAudioDecoder::bufferReady, this, &Track::audioBufferReady);
     connect(m_decoder, &QAudioDecoder::finished, this, &Track::audioDecoderFinished);
+    connect(m_decoder, QOverload<QAudioDecoder::Error>::of(&QAudioDecoder::error), this,
+            [this](QAudioDecoder::Error error)
+            {
+                qWarning() << "Audio decoder error:" << error;
+            });
 }
 
 Track::~Track() = default;
