@@ -27,6 +27,10 @@ EditorWindow::EditorWindow(QWidget *parent)
 
     auto *newAction = new QAction(tr("&New"), this);
     connect(newAction, &QAction::triggered, this, [this] {
+        QString audioFile = QFileDialog::getOpenFileName(this, tr("Audio File"));
+        if (audioFile.isEmpty())
+            return;
+        m_track->decode(audioFile);
     });
     fileMenu->addAction(newAction);
 
