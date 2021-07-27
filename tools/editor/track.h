@@ -15,6 +15,8 @@ public:
     explicit Track(QObject *parent = nullptr);
     ~Track() override;
 
+    bool isValid() const;
+
     void decode(const QString &audioFile);
     bool isDecoding() const;
 

@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QDebug>
 #include <QGraphicsItem>
+#include <QMouseEvent>
 #include <QStyleOptionGraphicsItem>
 #include <QThread>
 
@@ -289,8 +290,7 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
 
         painter->setPen(Qt::darkGray);
 
-        const auto eventTracks = m_track->eventTracks();
-        for (int i = 0; i < eventTracks; ++i) {
+        for (int i = 0, eventTracks = m_track->eventTracks(); i < eventTracks; ++i) {
             const float x = HorizMargin + WaveformWidth + (i + 1) * EventAreaWidth / (eventTracks + 1);
             drawVerticalLine(x);
         }
@@ -320,4 +320,24 @@ void TrackView::adjustSceneRect()
     scene()->setSceneRect(QRectF(topLeft, bottomRight));
 
     viewport()->update();
+}
+
+void TrackView::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton && (event->modifiers() & Qt::ShiftModifier)) {
+        if (m_track->isValid()) {
+            const auto scenePos = mapToScene(event->pos());
+            const auto eventTracks = m_track->eventTracks();
+            const auto eventTrackWidth = EventAreaWidth / (eventTracks + 1);
+            const auto xLeft = HorizMargin + WaveformWidth + 0.5f * eventTrackWidth;
+            if (scenePos.x() > xLeft) {
+                const auto trackIndex = static_cast<int>((scenePos.x() - xLeft) / eventTrackWidth);
+                if (trackIndex < eventTracks) {
+                    const float t = -scenePos.y() / PixelsPerSecond;
+                    m_track->addTapEvent(trackIndex, t);
+                }
+            }
+        }
+    }
+    QGraphicsView::mousePressEvent(event);
 }

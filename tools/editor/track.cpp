@@ -267,3 +267,8 @@ QJsonObject Track::save() const
 
     return settings;
 }
+
+bool Track::isValid() const
+{
+    return m_format.isValid();
+}

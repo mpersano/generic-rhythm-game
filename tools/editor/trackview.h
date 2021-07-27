@@ -14,7 +14,8 @@ public:
     TrackView(Track *track, QWidget *parent = nullptr);
 
 protected:
-    void drawBackground(QPainter *painter, const QRectF &rect);
+    void drawBackground(QPainter *painter, const QRectF &rect) override;
+    void mousePressEvent(QMouseEvent *event) override;
 
 private:
     void trackDecodingFinished();
