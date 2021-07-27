@@ -43,6 +43,7 @@ std::string meshPath(const std::string &basename)
 
 constexpr auto Speed = 0.15f;
 constexpr auto TrackWidth = 0.25f;
+constexpr auto HitWindow = 0.2f;
 
 } // namespace
 
@@ -67,10 +68,9 @@ void World::resize(int width, int height)
 
 void World::update(InputState inputState, float elapsed)
 {
-    if ((inputState & InputState::Fire1) == InputState::None) {
-        m_trackTime += 2.0f * elapsed;
-        updateCamera(false);
-    }
+    m_trackTime += elapsed;
+    updateCamera(false);
+    updateBeats(inputState);
 }
 
 void World::updateCamera(bool snapToPosition)
@@ -101,6 +101,39 @@ void World::updateCamera(bool snapToPosition)
     m_camera->setUp(up);
 
     m_markerTransform = transform;
+}
+
+void World::updateBeats(InputState inputState)
+{
+    const auto pressed = [this, inputState](InputState key) {
+        return ((inputState & key) != InputState::None) && ((m_prevInputState & key) == InputState::None);
+    };
+    constexpr std::array trackInputs { InputState::Fire1, InputState::Fire2, InputState::Fire3, InputState::Fire4 };
+
+    for (size_t i = 0; i < trackInputs.size(); ++i) {
+        if (pressed(trackInputs[i])) {
+            for (auto &beat : m_beats) {
+                if (beat.state != Beat::State::Active || beat.track != i)
+                    continue;
+                const auto dt = std::abs(beat.start - m_trackTime);
+                if (dt < HitWindow) {
+                    spdlog::info("hit track={} dt={}", beat.track, dt);
+                    beat.state = Beat::State::Inactive;
+                }
+            }
+        }
+    }
+
+    for (auto &beat : m_beats) {
+        if (beat.state != Beat::State::Active)
+            continue;
+        if (beat.start < m_trackTime - HitWindow) {
+            spdlog::info("missed track={}", beat.track);
+            beat.state = Beat::State::Inactive;
+        }
+    }
+
+    m_prevInputState = inputState;
 }
 
 void World::render() const
@@ -144,7 +177,8 @@ void World::render() const
         m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
-        m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
+        if (beat.state == Beat::State::Active)
+            m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
     }
     m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
     m_renderer->end();
@@ -349,7 +383,7 @@ void World::initializeLevel(const Track *track)
 
                        const auto transform = pathState.transformMatrix() * translate * scale;
 
-                       return { event.start, transform, Beat::State::Active };
+                       return { event.start, event.track, transform, Beat::State::Active };
                    });
     spdlog::info("drawing {} beats", m_beats.size());
 }

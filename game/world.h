@@ -41,6 +41,7 @@ private:
     };
     PathState pathStateAt(float distance) const;
     void updateCamera(bool snapToPosition);
+    void updateBeats(InputState inputState);
 
     std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<Camera> m_camera;
@@ -61,13 +62,16 @@ private:
     const Track *m_track;
     struct Beat {
         float start;
+        int track;
         glm::mat4 transform;
         enum class State {
-            Active
+            Active,
+            Inactive,
         };
         State state;
     };
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     std::vector<Beat> m_beats;
+    InputState m_prevInputState = InputState::None;
 };

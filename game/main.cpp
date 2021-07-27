@@ -100,19 +100,16 @@ void GameWindow::update(double elapsed)
 
 void GameWindow::keyPressEvent(int key)
 {
-#if 0
-    if (key == GLFW_KEY_SPACE) {
-        if (m_player->state() == OggPlayer::State::Playing) {
-            m_player->stop();
-        } else {
-            m_player->play();
-        }
-    }
-#endif
     switch (key) {
-    case GLFW_KEY_SPACE:
-        m_inputState |= InputState::Fire1;
+#define UPDATE_INPUT_STATE(key, state)     \
+    case GLFW_KEY_##key:                   \
+        m_inputState |= InputState::state; \
         break;
+        UPDATE_INPUT_STATE(D, Fire1)
+        UPDATE_INPUT_STATE(F, Fire2)
+        UPDATE_INPUT_STATE(J, Fire3)
+        UPDATE_INPUT_STATE(K, Fire4)
+#undef UPDATE_INPUT_STATE
     default:
         break;
     }
@@ -121,9 +118,15 @@ void GameWindow::keyPressEvent(int key)
 void GameWindow::keyReleaseEvent(int key)
 {
     switch (key) {
-    case GLFW_KEY_SPACE:
-        m_inputState &= ~InputState::Fire1;
+#define UPDATE_INPUT_STATE(key, state)      \
+    case GLFW_KEY_##key:                    \
+        m_inputState &= ~InputState::state; \
         break;
+        UPDATE_INPUT_STATE(D, Fire1)
+        UPDATE_INPUT_STATE(F, Fire2)
+        UPDATE_INPUT_STATE(J, Fire3)
+        UPDATE_INPUT_STATE(K, Fire4)
+#undef UPDATE_INPUT_STATE
     default:
         break;
     }
