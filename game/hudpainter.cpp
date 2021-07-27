@@ -6,6 +6,8 @@
 #include <gx/spritebatcher.h>
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <iostream>
 #include <spdlog/spdlog.h>
 
 using namespace std::string_literals;
@@ -42,12 +44,12 @@ void HUDPainter::donePainting()
     m_spriteBatcher->renderBatch();
 }
 
-void HUDPainter::drawText(const glm::vec2 &pos, const std::u32string &text)
+void HUDPainter::drawText(const glm::vec2 &position, const glm::vec4 &color, int depth, const std::u32string &text)
 {
     const auto boundingBox = textBoundingBox(text);
 
     const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
-    auto position = pos + glm::vec2(xOffset, 14);
+    auto glyphPosition = position + glm::vec2(xOffset, 0);
 
     m_spriteBatcher->setBatchProgram(m_textProgram.get());
 
@@ -55,10 +57,55 @@ void HUDPainter::drawText(const glm::vec2 &pos, const std::u32string &text)
         const auto glyph = m_fontCache->getGlyph(ch);
         if (!glyph)
             continue;
-        const auto p0 = position + glm::vec2(glyph->boundingBox.min);
+        const auto p0 = glyphPosition + glm::vec2(glyph->boundingBox.min);
         const auto p1 = p0 + glm::vec2(glyph->boundingBox.max - glyph->boundingBox.min);
-        m_spriteBatcher->addSprite(glyph->pixmap, p0, p1, glm::vec4(1, .85, 0, 1), 0);
-        position += glm::vec2(glyph->advanceWidth, 0);
+        m_spriteBatcher->addSprite(glyph->pixmap, p0, p1, color, depth);
+        glyphPosition += glm::vec2(glyph->advanceWidth, 0);
+    }
+}
+
+void HUDPainter::drawGradientText(const glm::vec2 &position, const Gradient &gradient, int depth, const std::u32string &text)
+{
+    const auto boundingBox = textBoundingBox(text);
+
+    const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
+    const auto startPosition = position + glm::vec2(xOffset, 0);
+
+    const auto vertexColor = [&boundingBox, &gradient, startPosition](const glm::vec2 &p) {
+        const glm::vec2 v {
+            (p.x - startPosition.x - boundingBox.min.x) / (boundingBox.max.x - boundingBox.min.x),
+            (p.y - startPosition.y - boundingBox.min.y) / (boundingBox.max.y - boundingBox.min.y)
+        };
+        const auto t = glm::dot(v - gradient.from, gradient.to - gradient.from);
+        return glm::mix(gradient.startColor, gradient.endColor, glm::clamp(t, 0.0f, 1.0f));
+    };
+
+    m_spriteBatcher->setBatchProgram(m_textProgram.get());
+
+    auto glyphPosition = startPosition;
+
+    for (char32_t ch : text) {
+        const auto glyph = m_fontCache->getGlyph(ch);
+        if (!glyph)
+            continue;
+        const auto p0 = glyphPosition + glm::vec2(glyph->boundingBox.min);
+        const auto p1 = p0 + glm::vec2(glyph->boundingBox.max - glyph->boundingBox.min);
+
+        const auto &pixmap = glyph->pixmap;
+
+        const auto &textureCoords = pixmap.textureCoords;
+        const auto &t0 = textureCoords.min;
+        const auto &t1 = textureCoords.max;
+
+        const GX::SpriteBatcher::QuadVerts verts = {
+            { { { p0.x, p0.y }, { t0.x, t0.y }, vertexColor({ p0.x, p0.y }), glm::vec4(0) },
+              { { p1.x, p0.y }, { t1.x, t0.y }, vertexColor({ p1.x, p0.y }), glm::vec4(0) },
+              { { p1.x, p1.y }, { t1.x, t1.y }, vertexColor({ p1.x, p1.y }), glm::vec4(0) },
+              { { p0.x, p1.y }, { t0.x, t1.y }, vertexColor({ p0.x, p1.y }), glm::vec4(0) } }
+        };
+
+        m_spriteBatcher->addSprite(pixmap.texture, verts, depth);
+        glyphPosition += glm::vec2(glyph->advanceWidth, 0);
     }
 }
 
@@ -76,9 +123,10 @@ GX::BoxI HUDPainter::textBoundingBox(const std::u32string &text)
 
         GX::BoxI glyphBoundingBox = glyph->boundingBox;
         glyphBoundingBox += offset;
+
         result |= glyphBoundingBox;
 
-        offset += glm::ivec2(glyph->advanceWidth);
+        offset += glm::ivec2(glyph->advanceWidth, 0);
     }
 
     return result;

@@ -42,7 +42,7 @@ std::string meshPath(const std::string &basename)
     return std::string("assets/meshes/") + basename;
 }
 
-constexpr auto Speed = 0.15f;
+constexpr auto Speed = 0.3f;
 constexpr auto TrackWidth = 0.25f;
 constexpr auto HitWindow = 0.2f;
 
@@ -187,7 +187,10 @@ void World::render() const
 
 void World::renderHUD(HUDPainter *hudPainter) const
 {
-    hudPainter->drawText(glm::vec2(0, 0), U"hello"s);
+    static const HUDPainter::Gradient gradient = {
+        { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
+    };
+    hudPainter->drawGradientText(glm::vec2(0, 0), gradient, 0, U"hello"s);
 }
 
 World::PathState World::pathStateAt(float distance) const

@@ -22,8 +22,15 @@ public:
     void startPainting();
     void donePainting();
 
-    void drawText(const glm::vec2 &pos, const std::u32string &text);
     GX::BoxI textBoundingBox(const std::u32string &text);
+
+    void drawText(const glm::vec2 &pos, const glm::vec4 &color, int depth, const std::u32string &text);
+
+    struct Gradient {
+        glm::vec2 from, to;
+        glm::vec4 startColor, endColor;
+    };
+    void drawGradientText(const glm::vec2 &pos, const Gradient &gradient, int depth, const std::u32string &text);
 
 private:
     void updateSceneBox(int width, int height);
