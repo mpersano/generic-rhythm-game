@@ -45,7 +45,11 @@ private:
     std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<Camera> m_camera;
     std::unique_ptr<Renderer> m_renderer;
-    std::vector<std::unique_ptr<Mesh>> m_trackSegments;
+    struct TrackSegment {
+        glm::vec3 position;
+        std::unique_ptr<Mesh> mesh;
+    };
+    std::vector<TrackSegment> m_trackSegments;
     struct PathPart {
         PathState state;
         float distance;

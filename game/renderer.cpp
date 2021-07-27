@@ -37,7 +37,7 @@ void Renderer::render(const Mesh *mesh, const Material *material, const glm::mat
 template<typename Iterator>
 void Renderer::render(Iterator first, Iterator last) const
 {
-    std::sort(first, last, [](const auto &lhs, const auto &rhs) {
+    std::stable_sort(first, last, [](const auto &lhs, const auto &rhs) {
         return std::tie(lhs.material->program, lhs.material->texture) < std::tie(rhs.material->program, rhs.material->texture);
     });
 
@@ -51,15 +51,14 @@ void Renderer::render(Iterator first, Iterator last) const
         }
 #endif
         const auto &drawCall = *it;
-        const auto *material = drawCall.material;
 
+        const auto *material = drawCall.material;
         if (const auto program = material->program; curProgram == std::nullopt || *curProgram != program) {
             m_shaderManager->useProgram(program);
             m_shaderManager->setUniform(ShaderManager::ProjectionMatrix, m_camera->projectionMatrix());
             m_shaderManager->setUniform(ShaderManager::ViewMatrix, m_camera->viewMatrix());
             curProgram = program;
         }
-
         if (const auto *texture = material->texture; curTexture != texture) {
             texture->bind();
             curTexture = texture;
@@ -75,7 +74,7 @@ void Renderer::render(Iterator first, Iterator last) const
 
 void Renderer::end()
 {
-    auto it = std::partition(m_drawCalls.begin(), m_drawCalls.end(), [](const DrawCall &drawCall) {
+    auto it = std::stable_partition(m_drawCalls.begin(), m_drawCalls.end(), [](const DrawCall &drawCall) {
         return (drawCall.material->flags & Material::Transparent) == 0;
     });
 

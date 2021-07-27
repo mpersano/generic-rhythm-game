@@ -42,7 +42,7 @@ std::string meshPath(const std::string &basename)
 }
 
 constexpr auto Speed = 0.15f;
-constexpr auto TrackWidth = 0.2f;
+constexpr auto TrackWidth = 0.25f;
 
 } // namespace
 
@@ -80,7 +80,7 @@ void World::updateCamera(bool snapToPosition)
 
     const auto transform = state.transformMatrix();
 
-    constexpr auto EyeOffset = glm::vec4(.3f, 0.f, -.2f, 1.0f);
+    constexpr auto EyeOffset = glm::vec4(.15f, 0.f, -.2f, 1.0f);
     const auto wantedPosition = glm::vec3(transform * EyeOffset);
 
     if (snapToPosition) {
@@ -111,9 +111,6 @@ void World::render() const
     glDisable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    // TODO: will need to sort track pieces back-to-front for proper alpha blending, is this even a good idea?
-    // there are only 3 days left and there isn't even any gameplay code yet
-
 #if 0
     m_camera->setEye(glm::vec3(0, 0, 5));
     m_camera->setCenter(glm::vec3(0, 0, 0));
@@ -125,9 +122,26 @@ void World::render() const
     const auto modelMatrix = glm::mat4(1);
 #endif
 
+    // sort track segments back-to-front for proper transparency
+
+    std::vector<std::tuple<float, const Mesh *>> trackSegments;
+    trackSegments.reserve(m_trackSegments.size());
+
+    const auto cameraDir = glm::normalize(m_camera->center() - m_camera->eye());
+
+    std::transform(m_trackSegments.begin(), m_trackSegments.end(), std::back_inserter(trackSegments),
+                   [this, &cameraDir](const TrackSegment &segment) {
+                       const auto z = glm::dot(segment.position - m_camera->eye(), cameraDir);
+                       return std::make_tuple(z, segment.mesh.get());
+                   });
+
+    std::sort(trackSegments.begin(), trackSegments.end(), [](const auto &lhs, const auto &rhs) {
+        return std::get<0>(lhs) > std::get<0>(rhs);
+    });
+
     m_renderer->begin();
-    for (const auto &mesh : m_trackSegments) {
-        m_renderer->render(mesh.get(), trackMaterial(), modelMatrix);
+    for (const auto &segment : trackSegments) {
+        m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
         m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
@@ -254,18 +268,25 @@ void World::initializeTrackMesh()
         }
     }
 
-    constexpr auto VertsPerSegment = 20;
+    constexpr auto VertsPerSegment = 10;
 
     for (size_t i = 0, size = m_pathParts.size(); i < size; i += VertsPerSegment) {
         std::vector<TrackMeshVertex> vertices;
         for (size_t j = i, end = std::min(size - 1, i + VertsPerSegment); j <= end; ++j) {
             const auto &part = m_pathParts[j];
-            const auto texU = 6.0f * part.distance;
+            const auto texU = 3.0f * part.distance;
             vertices.push_back({ part.state.center - part.state.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU) });
-            vertices.push_back({ part.state.center + part.state.side() * 0.5f * TrackWidth, glm::vec2(2.0f, texU) });
+            vertices.push_back({ part.state.center + part.state.side() * 0.5f * TrackWidth, glm::vec2(1.0f, texU) });
         }
         auto mesh = makeTrackMesh(vertices);
-        m_trackSegments.push_back(std::move(mesh));
+
+        glm::vec3 position = glm::vec3(0.0);
+        for (auto &vertex : vertices) {
+            position += vertex.position;
+        }
+        position *= 1.0f / vertices.size();
+
+        m_trackSegments.push_back({ position, std::move(mesh) });
     }
 
     spdlog::info("Initialized track, length={} segments={} parts={}",
@@ -324,7 +345,7 @@ void World::initializeLevel(const Track *track)
                        const auto x = -0.5f * TrackWidth + (event.track + 0.5f) * laneWidth;
                        const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, x, 0));
 
-                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.45f * laneWidth));
+                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
 
                        const auto transform = pathState.transformMatrix() * translate * scale;
 
