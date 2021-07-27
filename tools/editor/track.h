@@ -76,6 +76,6 @@ private:
     QAudioFormat m_format;
     std::vector<SampleType> m_samples;
     int m_eventTracks = 4;
-    int m_beatsPerMinute = 200;
+    int m_beatsPerMinute = 100;
     std::vector<std::unique_ptr<Event>> m_events;
 };
