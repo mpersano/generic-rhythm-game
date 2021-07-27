@@ -12,6 +12,7 @@ class Camera;
 class Renderer;
 class Mesh;
 class Track;
+class HUDPainter;
 
 class World
 {
@@ -22,6 +23,7 @@ public:
     void resize(int width, int height);
     void update(InputState inputState, float elapsed);
     void render() const;
+    void renderHUD(HUDPainter *hudPainter) const;
 
     void initializeLevel(const Track *track);
 

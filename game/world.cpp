@@ -2,6 +2,7 @@
 
 #include "bezier.h"
 #include "camera.h"
+#include "hudpainter.h"
 #include "loadmesh.h"
 #include "material.h"
 #include "mesh.h"
@@ -182,6 +183,11 @@ void World::render() const
     }
     m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
     m_renderer->end();
+}
+
+void World::renderHUD(HUDPainter *hudPainter) const
+{
+    hudPainter->drawText(glm::vec2(0, 0), U"hello"s);
 }
 
 World::PathState World::pathStateAt(float distance) const

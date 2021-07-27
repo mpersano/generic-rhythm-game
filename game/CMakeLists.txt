@@ -22,6 +22,10 @@ set(game_SOURCES
     world.h
     loadmesh.cpp
     loadmesh.h
+    loadprogram.cpp
+    loadprogram.h
+    hudpainter.cpp
+    hudpainter.h
 )
 
 add_executable(game ${game_SOURCES})

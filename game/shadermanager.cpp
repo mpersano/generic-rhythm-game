@@ -1,5 +1,7 @@
 #include "shadermanager.h"
 
+#include "loadprogram.h"
+
 #include <type_traits>
 
 #include <spdlog/spdlog.h>
@@ -26,26 +28,7 @@ loadProgram(ShaderManager::Program id)
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 
     const auto &sources = programSources[id];
-    std::unique_ptr<GX::GL::ShaderProgram> program(new GX::GL::ShaderProgram);
-    if (!program->addShader(GL_VERTEX_SHADER, shaderPath(sources.vertexShader))) {
-        spdlog::warn("Failed to add vertex shader for program {}: {}", id, program->log());
-        return {};
-    }
-    if (sources.geometryShader) {
-        if (!program->addShader(GL_GEOMETRY_SHADER, shaderPath(sources.geometryShader))) {
-            spdlog::warn("Failed to add geometry shader for program {}: {}", id, program->log());
-            return {};
-        }
-    }
-    if (!program->addShader(GL_FRAGMENT_SHADER, shaderPath(sources.fragmentShader))) {
-        spdlog::warn("Failed to add fragment shader for program {}: {}", id, program->log());
-        return {};
-    }
-    if (!program->link()) {
-        spdlog::warn("Failed to link program {}: {}", id, program->log());
-        return {};
-    }
-    return program;
+    return ::loadProgram(sources.vertexShader, sources.geometryShader, sources.fragmentShader);
 }
 
 } // namespace

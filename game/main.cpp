@@ -1,3 +1,4 @@
+#include "hudpainter.h"
 #include "oggplayer.h"
 #include "shadermanager.h"
 #include "track.h"
@@ -31,6 +32,7 @@ private:
     ALCdevice *m_alDevice = nullptr;
     ALCcontext *m_alContext = nullptr;
     std::unique_ptr<ShaderManager> m_shaderManager;
+    std::unique_ptr<HUDPainter> m_hudPainter;
     std::unique_ptr<OggPlayer> m_player;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
@@ -83,6 +85,10 @@ void GameWindow::releaseAL()
 void GameWindow::initializeGL()
 {
     m_shaderManager = std::make_unique<ShaderManager>();
+
+    m_hudPainter = std::make_unique<HUDPainter>();
+    m_hudPainter->resize(width(), height());
+
     m_world = std::make_unique<World>(m_shaderManager.get());
     m_world->resize(width(), height());
     m_world->initializeLevel(m_track.get());
@@ -91,6 +97,10 @@ void GameWindow::initializeGL()
 void GameWindow::paintGL()
 {
     m_world->render();
+
+    m_hudPainter->startPainting();
+    m_world->renderHUD(m_hudPainter.get());
+    m_hudPainter->donePainting();
 }
 
 void GameWindow::update(double elapsed)
