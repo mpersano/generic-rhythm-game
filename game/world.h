@@ -16,7 +16,7 @@ class Track;
 class World
 {
 public:
-    World();
+    explicit World(ShaderManager *shaderManager);
     ~World();
 
     void resize(int width, int height);
@@ -43,7 +43,7 @@ private:
     void updateCamera(bool snapToPosition);
     void updateBeats(InputState inputState);
 
-    std::unique_ptr<ShaderManager> m_shaderManager;
+    ShaderManager *m_shaderManager;
     std::unique_ptr<Camera> m_camera;
     std::unique_ptr<Renderer> m_renderer;
     struct TrackSegment {

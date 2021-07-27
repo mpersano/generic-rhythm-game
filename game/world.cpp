@@ -47,10 +47,10 @@ constexpr auto HitWindow = 0.2f;
 
 } // namespace
 
-World::World()
-    : m_shaderManager(new ShaderManager)
+World::World(ShaderManager *shaderManager)
+    : m_shaderManager(shaderManager)
     , m_camera(new Camera)
-    , m_renderer(new Renderer(m_shaderManager.get(), m_camera.get()))
+    , m_renderer(new Renderer(m_shaderManager, m_camera.get()))
 {
     initializeBeatMeshes();
     initializeMarkerMesh();

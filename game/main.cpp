@@ -1,4 +1,5 @@
 #include "oggplayer.h"
+#include "shadermanager.h"
 #include "track.h"
 #include "world.h"
 
@@ -29,6 +30,7 @@ private:
 
     ALCdevice *m_alDevice = nullptr;
     ALCcontext *m_alContext = nullptr;
+    std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<OggPlayer> m_player;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
@@ -80,7 +82,8 @@ void GameWindow::releaseAL()
 
 void GameWindow::initializeGL()
 {
-    m_world = std::make_unique<World>();
+    m_shaderManager = std::make_unique<ShaderManager>();
+    m_world = std::make_unique<World>(m_shaderManager.get());
     m_world->resize(width(), height());
     m_world->initializeLevel(m_track.get());
 }
