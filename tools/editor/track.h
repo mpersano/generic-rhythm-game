@@ -33,8 +33,8 @@ public:
     void setEventTracks(int eventTracks);
     int eventTracks() const;
 
-    void setBeatsPerMinute(int beatsPerMinute);
-    int beatsPerMinute() const;
+    void setBeatsPerMinute(float beatsPerMinute);
+    float beatsPerMinute() const;
 
     int rate() const;
     float duration() const; // seconds
@@ -69,7 +69,7 @@ signals:
     void audioFileChanged(const QString &audioFile);
     void rateChanged(int rate);
     void eventTracksChanged(int eventTracks);
-    void beatsPerMinuteChanged(int beatsPerMinute);
+    void beatsPerMinuteChanged(float beatsPerMinute);
     void durationChanged(float duration);
     void eventAdded(const Event *event);
     void eventAboutToBeRemoved(const Event *event);
@@ -89,6 +89,6 @@ private:
     QBuffer *m_buffer = nullptr;
     std::vector<SampleType> m_samples;
     int m_eventTracks = 4;
-    int m_beatsPerMinute = 100;
+    float m_beatsPerMinute = 100.0f;
     std::vector<std::unique_ptr<Event>> m_events;
 };

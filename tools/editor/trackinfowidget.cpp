@@ -17,7 +17,7 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     , m_duration(new QLabel(this))
     , m_rate(new QLabel(this))
     , m_eventTracks(new QSpinBox(this))
-    , m_beatsPerMinute(new QSpinBox(this))
+    , m_beatsPerMinute(new QDoubleSpinBox(this))
     , m_play(new QPushButton(tr("Play"), this))
     , m_stop(new QPushButton(tr("Stop"), this))
 {
@@ -60,9 +60,10 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     connect(m_eventTracks, qOverload<int>(&QSpinBox::valueChanged), m_track, &Track::setEventTracks);
 
     m_beatsPerMinute->setRange(10, 2000);
+    m_beatsPerMinute->setDecimals(2);
     m_beatsPerMinute->setValue(m_track->beatsPerMinute());
-    connect(m_track, &Track::beatsPerMinuteChanged, m_beatsPerMinute, &QSpinBox::setValue);
-    connect(m_beatsPerMinute, qOverload<int>(&QSpinBox::valueChanged), m_track, &Track::setBeatsPerMinute);
+    connect(m_track, &Track::beatsPerMinuteChanged, m_beatsPerMinute, &QDoubleSpinBox::setValue);
+    connect(m_beatsPerMinute, qOverload<double>(&QDoubleSpinBox::valueChanged), m_track, &Track::setBeatsPerMinute);
 
     connect(m_play, &QPushButton::clicked, m_track, &Track::startPlayback);
     connect(m_stop, &QPushButton::clicked, m_track, &Track::stopPlayback);

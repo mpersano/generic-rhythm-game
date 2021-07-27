@@ -5,6 +5,7 @@
 class QLabel;
 class QSpinBox;
 class QPushButton;
+class QDoubleSpinBox;
 
 class Track;
 
@@ -20,7 +21,7 @@ private:
     QLabel *m_duration;
     QLabel *m_rate;
     QSpinBox *m_eventTracks;
-    QSpinBox *m_beatsPerMinute;
+    QDoubleSpinBox *m_beatsPerMinute;
     QPushButton *m_play;
     QPushButton *m_stop;
 };

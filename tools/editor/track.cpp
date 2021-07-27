@@ -112,15 +112,15 @@ int Track::eventTracks() const
     return m_eventTracks;
 }
 
-void Track::setBeatsPerMinute(int beatsPerMinute)
+void Track::setBeatsPerMinute(float beatsPerMinute)
 {
-    if (beatsPerMinute == m_beatsPerMinute)
+    if (qFuzzyCompare(beatsPerMinute, m_beatsPerMinute))
         return;
     m_beatsPerMinute = beatsPerMinute;
     emit beatsPerMinuteChanged(beatsPerMinute);
 }
 
-int Track::beatsPerMinute() const
+float Track::beatsPerMinute() const
 {
     return m_beatsPerMinute;
 }
@@ -288,7 +288,7 @@ void Track::load(const QJsonObject &settings)
     const auto eventTracks = settings[eventTracksKey()].toInt();
     setEventTracks(eventTracks);
 
-    const auto beatsPerMinute = settings[beatsPerMinuteKey()].toInt();
+    const auto beatsPerMinute = settings[beatsPerMinuteKey()].toDouble();
     setBeatsPerMinute(beatsPerMinute);
 
     m_events.clear();
