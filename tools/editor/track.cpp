@@ -183,6 +183,13 @@ void Track::setEventDuration(const Event *event, float duration)
     emit eventChanged(event);
 }
 
+void Track::setPlaybackStartPosition(float position)
+{
+    if (m_output && m_output->state() == QAudio::ActiveState)
+        return;
+    m_playbackStartPosition = position;
+}
+
 void Track::startPlayback()
 {
     if (!isValid())
@@ -196,6 +203,8 @@ void Track::startPlayback()
 
     m_buffer->setData(QByteArray::fromRawData(reinterpret_cast<const char *>(m_samples.data()), m_samples.size() * sizeof(SampleType)));
     m_buffer->open(QIODevice::ReadOnly);
+    const auto startSample = static_cast<int>(m_playbackStartPosition * m_format.sampleRate());
+    m_buffer->seek(startSample * sizeof(SampleType));
     m_output = new QAudioOutput(m_format, this);
     m_output->setNotifyInterval(20);
     connect(m_output, &QAudioOutput::stateChanged, this, &Track::outputStateChanged);
@@ -207,6 +216,7 @@ void Track::stopPlayback()
 {
     if (!m_output)
         return;
+    m_playbackStartPosition = playbackPosition();
     m_output->stop();
 }
 
@@ -214,7 +224,7 @@ float Track::playbackPosition() const
 {
     if (!m_output)
         return 0.0f;
-    return static_cast<float>(m_output->elapsedUSecs()) * 1e-6;
+    return m_playbackStartPosition + static_cast<float>(m_output->elapsedUSecs()) * 1e-6;
 }
 
 void Track::outputStateChanged(QAudio::State state)
@@ -224,6 +234,7 @@ void Track::outputStateChanged(QAudio::State state)
         m_buffer->close();
         delete m_output;
         m_output = nullptr;
+        emit playbackStopped();
     };
     switch (state) {
     case QAudio::IdleState:

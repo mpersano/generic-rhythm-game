@@ -107,8 +107,39 @@ void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 class MarkerItem : public QGraphicsLineItem
 {
 public:
-    using QGraphicsLineItem::QGraphicsLineItem;
+    explicit MarkerItem(Track *track, QGraphicsItem *parent = nullptr);
+
+protected:
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    Track *m_track;
 };
+
+MarkerItem::MarkerItem(Track *track, QGraphicsItem *parent)
+    : QGraphicsLineItem(parent)
+    , m_track(track)
+{
+    setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
+}
+
+QVariant MarkerItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    switch (change) {
+    case ItemPositionChange: {
+        QPointF updatePos = value.toPointF();
+        updatePos.setX(0);
+        return updatePos;
+    }
+    case ItemPositionHasChanged: {
+        const auto pos = value.toPointF();
+        const auto start = static_cast<float>(-pos.y()) / PixelsPerSecond;
+        m_track->setPlaybackStartPosition(start);
+        break;
+    }
+    default:
+        break;
+    }
+    return value;
+}
 
 void TrackView::initializeWaveformTiles()
 {
@@ -214,9 +245,10 @@ TrackView::TrackView(Track *track, QWidget *parent)
     });
     addAction(deleteAction);
 
-    m_markerItem = new MarkerItem;
-    m_markerItem->setPen(QPen(Qt::red));
+    m_markerItem = new MarkerItem(m_track);
+    m_markerItem->setPen(QPen(Qt::red, 4));
     m_markerItem->setVisible(m_track->isValid());
+    m_markerItem->setLine(HorizMargin, 0, HorizMargin + WaveformWidth + EventAreaWidth, 0);
     scene()->addItem(m_markerItem);
 
     updatePlaybackPosition();
@@ -226,7 +258,7 @@ TrackView::TrackView(Track *track, QWidget *parent)
 void TrackView::updatePlaybackPosition()
 {
     const auto y = -PixelsPerSecond * m_track->playbackPosition();
-    m_markerItem->setLine(HorizMargin, y, HorizMargin + WaveformWidth + EventAreaWidth, y);
+    m_markerItem->setPos(0, y);
 
     centerOn(sceneRect().center().x(), y);
 }

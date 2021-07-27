@@ -60,6 +60,7 @@ public:
     void startPlayback();
     void stopPlayback();
     float playbackPosition() const;
+    void setPlaybackStartPosition(float start);
 
     QJsonObject save() const;
     void load(const QJsonObject &settings);
@@ -76,6 +77,7 @@ signals:
     void eventChanged(const Event *event);
     void eventsReset();
     void playbackPositionUpdated();
+    void playbackStopped();
 
 private:
     void audioBufferReady();
@@ -91,4 +93,5 @@ private:
     int m_eventTracks = 4;
     float m_beatsPerMinute = 100.0f;
     std::vector<std::unique_ptr<Event>> m_events;
+    float m_playbackStartPosition = 0.0f;
 };
