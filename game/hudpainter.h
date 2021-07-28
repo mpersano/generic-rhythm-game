@@ -24,13 +24,19 @@ public:
 
     GX::BoxI textBoundingBox(const std::u32string &text);
 
-    void drawText(const glm::vec2 &pos, const glm::vec4 &color, int depth, const std::u32string &text);
+    void drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text);
 
     struct Gradient {
         glm::vec2 from, to;
         glm::vec4 startColor, endColor;
     };
-    void drawGradientText(const glm::vec2 &pos, const Gradient &gradient, int depth, const std::u32string &text);
+    void drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text);
+
+    void resetTransform();
+    void scale(float sx, float sy);
+    void scale(float s);
+    void translate(float dx, float dy);
+    void rotate(float angle);
 
 private:
     void updateSceneBox(int width, int height);
@@ -39,4 +45,5 @@ private:
     std::unique_ptr<GX::SpriteBatcher> m_spriteBatcher;
     std::unique_ptr<GX::GL::ShaderProgram> m_textProgram;
     GX::BoxF m_sceneBox = {};
+    glm::mat4 m_transform; // TODO: glm::mat3
 };

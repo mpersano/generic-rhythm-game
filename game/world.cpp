@@ -42,7 +42,7 @@ std::string meshPath(const std::string &basename)
     return std::string("assets/meshes/") + basename;
 }
 
-constexpr auto Speed = 0.3f;
+constexpr auto Speed = 0.5f;
 constexpr auto TrackWidth = 0.25f;
 constexpr auto HitWindow = 0.2f;
 
@@ -139,12 +139,6 @@ void World::updateBeats(InputState inputState)
 
 void World::render() const
 {
-    glClearColor(0, 0, 0, 0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    glDisable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
 #if 0
     m_camera->setEye(glm::vec3(0, 0, 5));
     m_camera->setCenter(glm::vec3(0, 0, 0));
@@ -190,7 +184,10 @@ void World::renderHUD(HUDPainter *hudPainter) const
     static const HUDPainter::Gradient gradient = {
         { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
     };
-    hudPainter->drawGradientText(glm::vec2(0, 0), gradient, 0, U"hello"s);
+    hudPainter->rotate(m_trackTime * 1.2f);
+    hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
+    hudPainter->drawText(0, 0, gradient, 0, U"hello"s);
+    hudPainter->drawText(0, -20, glm::vec4(1), 0, U"world"s);
 }
 
 World::PathState World::pathStateAt(float distance) const

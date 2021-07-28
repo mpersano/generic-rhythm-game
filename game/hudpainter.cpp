@@ -36,6 +36,7 @@ void HUDPainter::resize(int width, int height)
 
 void HUDPainter::startPainting()
 {
+    resetTransform();
     m_spriteBatcher->startBatch();
 }
 
@@ -44,12 +45,12 @@ void HUDPainter::donePainting()
     m_spriteBatcher->renderBatch();
 }
 
-void HUDPainter::drawText(const glm::vec2 &position, const glm::vec4 &color, int depth, const std::u32string &text)
+void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text)
 {
     const auto boundingBox = textBoundingBox(text);
 
     const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
-    auto glyphPosition = position + glm::vec2(xOffset, 0);
+    auto glyphPosition = glm::vec2(x, y) + glm::vec2(xOffset, 0);
 
     m_spriteBatcher->setBatchProgram(m_textProgram.get());
 
@@ -59,17 +60,37 @@ void HUDPainter::drawText(const glm::vec2 &position, const glm::vec4 &color, int
             continue;
         const auto p0 = glyphPosition + glm::vec2(glyph->boundingBox.min);
         const auto p1 = p0 + glm::vec2(glyph->boundingBox.max - glyph->boundingBox.min);
-        m_spriteBatcher->addSprite(glyph->pixmap, p0, p1, color, depth);
+
+        const auto &pixmap = glyph->pixmap;
+
+        const auto &textureCoords = pixmap.textureCoords;
+        const auto &t0 = textureCoords.min;
+        const auto &t1 = textureCoords.max;
+
+        const auto v0 = glm::vec2(m_transform * glm::vec4(p0.x, p0.y, 0, 1));
+        const auto v1 = glm::vec2(m_transform * glm::vec4(p1.x, p0.y, 0, 1));
+        const auto v2 = glm::vec2(m_transform * glm::vec4(p1.x, p1.y, 0, 1));
+        const auto v3 = glm::vec2(m_transform * glm::vec4(p0.x, p1.y, 0, 1));
+
+        const GX::SpriteBatcher::QuadVerts verts = {
+            { { v0, { t0.x, t0.y }, color, glm::vec4(0) },
+              { v1, { t1.x, t0.y }, color, glm::vec4(0) },
+              { v2, { t1.x, t1.y }, color, glm::vec4(0) },
+              { v3, { t0.x, t1.y }, color, glm::vec4(0) } }
+        };
+
+        m_spriteBatcher->addSprite(pixmap.texture, verts, depth);
+
         glyphPosition += glm::vec2(glyph->advanceWidth, 0);
     }
 }
 
-void HUDPainter::drawGradientText(const glm::vec2 &position, const Gradient &gradient, int depth, const std::u32string &text)
+void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text)
 {
     const auto boundingBox = textBoundingBox(text);
 
     const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
-    const auto startPosition = position + glm::vec2(xOffset, 0);
+    const auto startPosition = glm::vec2(x, y) + glm::vec2(xOffset, 0);
 
     const auto vertexColor = [&boundingBox, &gradient, startPosition](const glm::vec2 &p) {
         const glm::vec2 v {
@@ -97,11 +118,16 @@ void HUDPainter::drawGradientText(const glm::vec2 &position, const Gradient &gra
         const auto &t0 = textureCoords.min;
         const auto &t1 = textureCoords.max;
 
+        const auto v0 = glm::vec2(m_transform * glm::vec4(p0.x, p0.y, 0, 1));
+        const auto v1 = glm::vec2(m_transform * glm::vec4(p1.x, p0.y, 0, 1));
+        const auto v2 = glm::vec2(m_transform * glm::vec4(p1.x, p1.y, 0, 1));
+        const auto v3 = glm::vec2(m_transform * glm::vec4(p0.x, p1.y, 0, 1));
+
         const GX::SpriteBatcher::QuadVerts verts = {
-            { { { p0.x, p0.y }, { t0.x, t0.y }, vertexColor({ p0.x, p0.y }), glm::vec4(0) },
-              { { p1.x, p0.y }, { t1.x, t0.y }, vertexColor({ p1.x, p0.y }), glm::vec4(0) },
-              { { p1.x, p1.y }, { t1.x, t1.y }, vertexColor({ p1.x, p1.y }), glm::vec4(0) },
-              { { p0.x, p1.y }, { t0.x, t1.y }, vertexColor({ p0.x, p1.y }), glm::vec4(0) } }
+            { { v0, { t0.x, t0.y }, vertexColor({ p0.x, p0.y }), glm::vec4(0) },
+              { v1, { t1.x, t0.y }, vertexColor({ p1.x, p0.y }), glm::vec4(0) },
+              { v2, { t1.x, t1.y }, vertexColor({ p1.x, p1.y }), glm::vec4(0) },
+              { v3, { t0.x, t1.y }, vertexColor({ p0.x, p1.y }), glm::vec4(0) } }
         };
 
         m_spriteBatcher->addSprite(pixmap.texture, verts, depth);
@@ -153,4 +179,29 @@ void HUDPainter::updateSceneBox(int width, int height)
     const auto top = 0.5f * sceneSize.y;
     const auto bottom = -0.5f * sceneSize.y;
     m_sceneBox = GX::BoxF { { left, bottom }, { right, top } };
+}
+
+void HUDPainter::resetTransform()
+{
+    m_transform = glm::mat4(1);
+}
+
+void HUDPainter::scale(float sx, float sy)
+{
+    m_transform = glm::scale(m_transform, glm::vec3(sx, sy, 1));
+}
+
+void HUDPainter::scale(float s)
+{
+    scale(s, s);
+}
+
+void HUDPainter::translate(float dx, float dy)
+{
+    m_transform = glm::translate(m_transform, glm::vec3(dx, dy, 0));
+}
+
+void HUDPainter::rotate(float angle)
+{
+    m_transform = glm::rotate(m_transform, angle, glm::vec3(0, 0, 1));
 }
