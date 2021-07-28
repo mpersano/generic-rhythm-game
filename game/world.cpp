@@ -9,6 +9,7 @@
 #include "renderer.h"
 #include "shadermanager.h"
 #include "track.h"
+#include "tween.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
@@ -108,6 +109,9 @@ void HitAnimation::render(HUDPainter *hudPainter)
         { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
     };
     hudPainter->setFont(font(120));
+    const float t = m_time / TotalTime;
+    const float x = tween<Tweeners::InOutBack<float>>(-400.0f, 400.0f, t);
+    hudPainter->translate(x, 0);
 #if 0
     hudPainter->rotate(m_trackTime * 1.2f);
     hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
@@ -263,7 +267,7 @@ void World::render() const
 
 void World::renderHUD(HUDPainter *hudPainter) const
 {
-    for (auto& animation : m_textAnimations)
+    for (auto &animation : m_textAnimations)
         animation->render(hudPainter);
 }
 
