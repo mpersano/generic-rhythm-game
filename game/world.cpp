@@ -53,6 +53,68 @@ constexpr auto HitWindow = 0.2f;
 
 } // namespace
 
+class TextAnimation
+{
+public:
+    virtual ~TextAnimation() = default;
+
+    bool update(float elapsed)
+    {
+        m_time += elapsed;
+        return doUpdate();
+    }
+
+    virtual void render(HUDPainter *hudPainter) = 0;
+
+protected:
+    virtual bool doUpdate() = 0;
+
+    float m_time = 0.0f;
+};
+
+class HitAnimation : public TextAnimation
+{
+public:
+    HitAnimation(float x, float y, const std::u32string &text);
+    ~HitAnimation() = default;
+
+    void render(HUDPainter *hudPainter) override;
+
+private:
+    bool doUpdate() override;
+
+    static constexpr auto TotalTime = 3.0f;
+
+    float m_x;
+    float m_y;
+    std::u32string m_text;
+};
+
+HitAnimation::HitAnimation(float x, float y, const std::u32string &text)
+    : m_x(x)
+    , m_y(y)
+    , m_text(text)
+{
+}
+
+bool HitAnimation::doUpdate()
+{
+    return m_time < TotalTime;
+}
+
+void HitAnimation::render(HUDPainter *hudPainter)
+{
+    static const HUDPainter::Gradient gradient = {
+        { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
+    };
+    hudPainter->setFont(font(120));
+#if 0
+    hudPainter->rotate(m_trackTime * 1.2f);
+    hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
+#endif
+    hudPainter->drawText(m_x, m_y, gradient, 0, m_text);
+}
+
 World::World(ShaderManager *shaderManager)
     : m_shaderManager(shaderManager)
     , m_camera(new Camera)
@@ -62,6 +124,8 @@ World::World(ShaderManager *shaderManager)
     initializeMarkerMesh();
     initializeTrackMesh();
     updateCamera(true);
+
+    m_textAnimations.emplace_back(new HitAnimation(0, 0, U"hello!"s));
 }
 
 World::~World() = default;
@@ -77,6 +141,7 @@ void World::update(InputState inputState, float elapsed)
     m_trackTime += elapsed;
     updateCamera(false);
     updateBeats(inputState);
+    updateTextAnimations(elapsed);
 }
 
 void World::updateCamera(bool snapToPosition)
@@ -142,6 +207,18 @@ void World::updateBeats(InputState inputState)
     m_prevInputState = inputState;
 }
 
+void World::updateTextAnimations(float elapsed)
+{
+    auto it = m_textAnimations.begin();
+    while (it != m_textAnimations.end()) {
+        if ((*it)->update(elapsed)) {
+            ++it;
+        } else {
+            it = m_textAnimations.erase(it);
+        }
+    }
+}
+
 void World::render() const
 {
 #if 0
@@ -186,13 +263,8 @@ void World::render() const
 
 void World::renderHUD(HUDPainter *hudPainter) const
 {
-    static const HUDPainter::Gradient gradient = {
-        { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
-    };
-    hudPainter->setFont(font(120));
-    hudPainter->rotate(m_trackTime * 1.2f);
-    hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
-    hudPainter->drawText(0, 0, gradient, 0, U"hello"s);
+    for (auto& animation : m_textAnimations)
+        animation->render(hudPainter);
 }
 
 World::PathState World::pathStateAt(float distance) const

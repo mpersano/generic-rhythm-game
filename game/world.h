@@ -13,6 +13,7 @@ class Renderer;
 class Mesh;
 class Track;
 class HUDPainter;
+class TextAnimation;
 
 class World
 {
@@ -44,6 +45,7 @@ private:
     PathState pathStateAt(float distance) const;
     void updateCamera(bool snapToPosition);
     void updateBeats(InputState inputState);
+    void updateTextAnimations(float elapsed);
 
     ShaderManager *m_shaderManager;
     std::unique_ptr<Camera> m_camera;
@@ -75,5 +77,6 @@ private:
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     std::vector<Beat> m_beats;
+    std::vector<std::unique_ptr<TextAnimation>> m_textAnimations;
     InputState m_prevInputState = InputState::None;
 };
