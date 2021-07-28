@@ -47,22 +47,10 @@ struct InQuadratic {
 };
 
 template<typename T>
-struct OutQuadratic {
-    T operator()(T t) const
-    {
-        Detail::Out<T, InQuadratic<T>> f;
-        return f(t);
-    }
-};
+using OutQuadratic = Detail::Out<T, InQuadratic<T>>;
 
 template<typename T>
-struct InOutQuadratic {
-    T operator()(T t) const
-    {
-        Detail::InOut<T, InQuadratic<T>> f;
-        return f(t);
-    }
-};
+using InOutQuadratic = Detail::InOut<T, InQuadratic<T>>;
 
 template<typename T>
 struct InBack {
@@ -75,22 +63,10 @@ struct InBack {
 };
 
 template<typename T>
-struct OutBack {
-    T operator()(T t) const
-    {
-        Detail::Out<T, InBack<T>> f;
-        return f(t);
-    }
-};
+using OutBack = Detail::Out<T, InBack<T>>;
 
 template<typename T>
-struct InOutBack {
-    T operator()(T t) const
-    {
-        Detail::InOut<T, InBack<T>> f;
-        return f(t);
-    }
-};
+using InOutBack = Detail::InOut<T, InBack<T>>;
 
 template<typename T>
 struct OutBounce {
@@ -112,22 +88,10 @@ struct OutBounce {
 };
 
 template<typename T>
-struct InBounce {
-    T operator()(T t) const
-    {
-        Detail::Out<T, OutBounce<T>> f;
-        return f(t);
-    }
-};
+using InBounce = Detail::Out<T, OutBounce<T>>;
 
 template<typename T>
-struct InOutBounce {
-    T operator()(T t) const
-    {
-        Detail::InOut<T, InBounce<T>> f;
-        return f(t);
-    }
-};
+using InOutBounce = Detail::InOut<T, InBounce<T>>;
 
 } // namespace Tweeners
 
