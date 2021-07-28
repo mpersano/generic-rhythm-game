@@ -2,7 +2,8 @@ qua 28 jul 2021 05:27:10 -03
 ============================
 code
 ----
-  * HUD: combo counter
+  v hit/miss text animation
+  v HUD: combo counter
   * HUD: score counter
   * better shaders (lighting, fog)
   * background static image

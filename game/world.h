@@ -13,7 +13,8 @@ class Renderer;
 class Mesh;
 class Track;
 class HUDPainter;
-class TextAnimation;
+class HUDAnimation;
+class ComboCounter;
 
 class World
 {
@@ -46,6 +47,7 @@ private:
     void updateCamera(bool snapToPosition);
     void updateBeats(InputState inputState);
     void updateTextAnimations(float elapsed);
+    void updateComboPainter(float elapsed);
 
     ShaderManager *m_shaderManager;
     std::unique_ptr<Camera> m_camera;
@@ -77,6 +79,7 @@ private:
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     std::vector<Beat> m_beats;
-    std::vector<std::unique_ptr<TextAnimation>> m_textAnimations;
+    std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
+    std::unique_ptr<ComboCounter> m_comboCounter;
     InputState m_prevInputState = InputState::None;
 };

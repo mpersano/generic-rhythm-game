@@ -174,16 +174,16 @@ public:
     }
 };
 
-class TextAnimation
+class HUDAnimation
 {
 public:
-    virtual ~TextAnimation() = default;
+    virtual ~HUDAnimation() = default;
 
     virtual bool update(float elapsed) = 0;
     virtual void render(HUDPainter *hudPainter) = 0;
 };
 
-class HitAnimation : public TextAnimation
+class HitAnimation : public HUDAnimation
 {
 public:
     HitAnimation(float x, float y, const std::u32string &text);
@@ -237,17 +237,101 @@ bool HitAnimation::update(float elapsed)
     return m_animation->update(elapsed);
 }
 
+class ComboCounter
+{
+public:
+    int count() const { return m_count; }
+
+    void clear()
+    {
+        m_count = 0;
+        m_alpha = 0;
+    }
+
+    void increment()
+    {
+        ++m_count;
+        m_scaleDelta = 1.0f;
+        updateText();
+        m_alpha = 1;
+    }
+
+    void update(float elapsed)
+    {
+        m_scale = m_scale + elapsed * m_scaleDelta;
+        m_scaleDelta -= 2.0 * elapsed;
+
+        if (m_scale > MaxScale) {
+            m_scale = MaxScale;
+            m_scaleDelta = 0.0f;
+        }
+
+        if (m_scale < MinScale) {
+            m_scale = MinScale;
+            m_scaleDelta = 0.0f;
+        }
+
+        m_currentAlpha = glm::mix(m_currentAlpha, m_alpha, 0.15f);
+    }
+
+    void render(HUDPainter *hudPainter) const
+    {
+        hudPainter->resetTransform();
+
+        hudPainter->translate(glm::vec2(0, 0));
+        hudPainter->scale(glm::vec2(m_scale, m_currentAlpha * m_scale));
+
+        const auto s = 0.25f * ((m_scale - MinScale) / (MaxScale - MinScale));
+
+        hudPainter->setFont(font(80));
+        const HUDPainter::Gradient gradientTop = {
+            { 0, 1 }, { 0, 0 }, { 1, 1, 1, m_currentAlpha }, { 1, s, s, m_currentAlpha }
+        };
+        hudPainter->drawText(0, -50, gradientTop, 0, U"COMBO"s);
+
+        hudPainter->setFont(font(200));
+        const HUDPainter::Gradient gradientBottom = {
+            { 0, 0 }, { 0, 1 }, { 1, 1, 1, m_currentAlpha }, { 1, s, s, m_currentAlpha }
+        };
+        hudPainter->drawText(0, 60, gradientBottom, 0, m_text);
+    }
+
+private:
+    void updateText()
+    {
+        // why no std::to_string for u32string?!
+        m_text.clear();
+        int value = m_count;
+        while (value) {
+            const int digit = value % 10;
+            m_text.insert(m_text.begin(), U'0' + digit);
+            value /= 10;
+        }
+    }
+
+    static constexpr auto MaxScale = 1.25f;
+    static constexpr auto MinScale = 1.0f;
+
+    float m_scale = MinScale;
+    float m_scaleDelta = 0.0f;
+    std::u32string m_text;
+    int m_count = 0;
+    float m_alpha = 0;
+    float m_currentAlpha = 0;
+};
+
 World::World(ShaderManager *shaderManager)
     : m_shaderManager(shaderManager)
     , m_camera(new Camera)
     , m_renderer(new Renderer(m_shaderManager, m_camera.get()))
+    , m_comboCounter(new ComboCounter)
 {
     initializeBeatMeshes();
     initializeMarkerMesh();
     initializeTrackMesh();
     updateCamera(true);
 
-    m_textAnimations.emplace_back(new HitAnimation(-200, 100, U"PERFECT!"s));
+    m_hudAnimations.emplace_back(new HitAnimation(-200, 100, U"PERFECT!"s));
 }
 
 World::~World() = default;
@@ -264,6 +348,7 @@ void World::update(InputState inputState, float elapsed)
     updateCamera(false);
     updateBeats(inputState);
     updateTextAnimations(elapsed);
+    m_comboCounter->update(elapsed);
 }
 
 void World::updateCamera(bool snapToPosition)
@@ -301,6 +386,7 @@ void World::updateBeats(InputState inputState)
     const auto pressed = [this, inputState](InputState key) {
         return ((inputState & key) != InputState::None) && ((m_prevInputState & key) == InputState::None);
     };
+#if 0
     constexpr std::array trackInputs { InputState::Fire1, InputState::Fire2, InputState::Fire3, InputState::Fire4 };
 
     for (size_t i = 0; i < trackInputs.size(); ++i) {
@@ -325,18 +411,27 @@ void World::updateBeats(InputState inputState)
             beat.state = Beat::State::Inactive;
         }
     }
+#else
+    if (pressed(InputState::Fire1)) {
+        m_comboCounter->increment();
+    }
+
+    if (pressed(InputState::Fire2)) {
+        m_comboCounter->clear();
+    }
+#endif
 
     m_prevInputState = inputState;
 }
 
 void World::updateTextAnimations(float elapsed)
 {
-    auto it = m_textAnimations.begin();
-    while (it != m_textAnimations.end()) {
+    auto it = m_hudAnimations.begin();
+    while (it != m_hudAnimations.end()) {
         if ((*it)->update(elapsed)) {
             ++it;
         } else {
-            it = m_textAnimations.erase(it);
+            it = m_hudAnimations.erase(it);
         }
     }
 }
@@ -385,8 +480,9 @@ void World::render() const
 
 void World::renderHUD(HUDPainter *hudPainter) const
 {
-    for (auto &animation : m_textAnimations)
+    for (auto &animation : m_hudAnimations)
         animation->render(hudPainter);
+    m_comboCounter->render(hudPainter);
 }
 
 World::PathState World::pathStateAt(float distance) const
