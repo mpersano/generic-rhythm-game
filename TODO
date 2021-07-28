@@ -1,0 +1,21 @@
+qua 28 jul 2021 05:27:10 -03
+============================
+code
+----
+  * HUD: combo counter
+  * HUD: score counter
+  * better shaders (lighting, fog)
+  * background static image
+  * environment meshes (rings around track, etc)
+  * different materials for each track
+  * beat hit animation
+  ? opening screen
+  ? results screen
+  ? glow/bloom filter
+  ? particle effect on hit
+
+assets
+------
+  * track.json
+  * better beat mesh
+  * track texture
