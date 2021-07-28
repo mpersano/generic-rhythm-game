@@ -36,6 +36,7 @@ void HUDPainter::resize(int width, int height)
 
 void HUDPainter::startPainting()
 {
+    m_transformStack.clear();
     resetTransform();
     m_font = nullptr;
     m_spriteBatcher->startBatch();
@@ -209,9 +210,14 @@ void HUDPainter::resetTransform()
     m_transform = glm::mat4(1);
 }
 
+void HUDPainter::scale(const glm::vec2 &s)
+{
+    m_transform = glm::scale(m_transform, glm::vec3(s, 1));
+}
+
 void HUDPainter::scale(float sx, float sy)
 {
-    m_transform = glm::scale(m_transform, glm::vec3(sx, sy, 1));
+    scale(glm::vec2(sx, sy));
 }
 
 void HUDPainter::scale(float s)
@@ -219,14 +225,34 @@ void HUDPainter::scale(float s)
     scale(s, s);
 }
 
+void HUDPainter::translate(const glm::vec2 &p)
+{
+    m_transform = glm::translate(m_transform, glm::vec3(p, 0));
+}
+
 void HUDPainter::translate(float dx, float dy)
 {
-    m_transform = glm::translate(m_transform, glm::vec3(dx, dy, 0));
+    translate(glm::vec2(dx, dy));
 }
 
 void HUDPainter::rotate(float angle)
 {
     m_transform = glm::rotate(m_transform, angle, glm::vec3(0, 0, 1));
+}
+
+void HUDPainter::saveTransform()
+{
+    m_transformStack.push_back(m_transform);
+}
+
+void HUDPainter::restoreTransform()
+{
+    if (m_transformStack.empty()) {
+        spdlog::warn("Transform stack underflow lol");
+        return;
+    }
+    m_transform = m_transformStack.back();
+    m_transformStack.pop_back();
 }
 
 std::size_t HUDPainter::FontHasher::operator()(const Font &font) const

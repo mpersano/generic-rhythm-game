@@ -40,7 +40,7 @@ const Material *debugMaterial()
 
 HUDPainter::Font font(int pixelHeight)
 {
-    return { "assets/fonts/OpenSans_Regular.ttf"s, pixelHeight };
+    return { "assets/fonts/OpenSans-ExtraBold.ttf"s, pixelHeight };
 }
 
 std::string meshPath(const std::string &basename)
@@ -54,23 +54,133 @@ constexpr auto HitWindow = 0.2f;
 
 } // namespace
 
+class AbstractAnimation
+{
+public:
+    virtual ~AbstractAnimation() = default;
+    virtual bool update(float elapsed) = 0;
+};
+
+struct IdleAnimation : public AbstractAnimation {
+public:
+    IdleAnimation(float duration)
+        : m_duration(duration)
+    {
+    }
+
+    bool update(float elapsed)
+    {
+        m_time += elapsed;
+        return m_time < m_duration;
+    }
+
+private:
+    float m_time = 0.0f;
+    float m_duration;
+};
+
+template<typename T, typename TweenerT>
+struct PropertyAnimation : public AbstractAnimation {
+public:
+    PropertyAnimation(T *property, T startValue, T endValue, float duration)
+        : m_property(property)
+        , m_startValue(startValue)
+        , m_endValue(endValue)
+        , m_duration(duration)
+    {
+    }
+
+    bool update(float elapsed) override
+    {
+        m_time += elapsed;
+        if (m_time > m_duration)
+            return false;
+        const float t = m_time / m_duration;
+        *m_property = tween<TweenerT>(m_startValue, m_endValue, t);
+        return true;
+    }
+
+private:
+    T *m_property;
+    T m_startValue;
+    T m_endValue;
+    float m_time = 0.0f;
+    float m_duration;
+};
+
+template<template<class> class TweenerT>
+using FloatAnimation = PropertyAnimation<float, TweenerT<float>>;
+
+template<template<class> class TweenerT>
+using Vec2Animation = PropertyAnimation<glm::vec2, TweenerT<float>>;
+
+struct AnimationGroup : public AbstractAnimation {
+public:
+    void addAnimation(std::unique_ptr<AbstractAnimation> animation)
+    {
+        m_animations.push_back(std::move(animation));
+    }
+
+    void addIdleAnimation(float duration)
+    {
+        m_animations.emplace_back(new IdleAnimation(duration));
+    }
+
+    template<template<class> class TweenerT>
+    void addFloatAnimation(float *property, float startValue, float endValue, float duration)
+    {
+        m_animations.emplace_back(new FloatAnimation<TweenerT>(property, startValue, endValue, duration));
+    }
+
+    template<template<class> class TweenerT>
+    void addVec2Animation(glm::vec2 *property, const glm::vec2 &startValue, const glm::vec2 &endValue, float duration)
+    {
+        m_animations.emplace_back(new Vec2Animation<TweenerT>(property, startValue, endValue, duration));
+    }
+
+protected:
+    std::vector<std::unique_ptr<AbstractAnimation>> m_animations;
+};
+
+struct ParallelAnimation : public AnimationGroup {
+public:
+    bool update(float elapsed) override
+    {
+        bool result = false;
+        auto it = m_animations.begin();
+        while (it != m_animations.end()) {
+            if ((*it)->update(elapsed)) {
+                ++it;
+                result = true;
+            } else {
+                it = m_animations.erase(it);
+            }
+        }
+        return result;
+    }
+};
+
+struct SequentialAnimation : public AnimationGroup {
+public:
+    bool update(float elapsed) override
+    {
+        if (!m_animations.empty()) {
+            auto &first = m_animations.front();
+            if (!first->update(elapsed)) {
+                m_animations.erase(m_animations.begin());
+            }
+        }
+        return !m_animations.empty();
+    }
+};
+
 class TextAnimation
 {
 public:
     virtual ~TextAnimation() = default;
 
-    bool update(float elapsed)
-    {
-        m_time += elapsed;
-        return doUpdate();
-    }
-
+    virtual bool update(float elapsed) = 0;
     virtual void render(HUDPainter *hudPainter) = 0;
-
-protected:
-    virtual bool doUpdate() = 0;
-
-    float m_time = 0.0f;
 };
 
 class HitAnimation : public TextAnimation
@@ -79,44 +189,52 @@ public:
     HitAnimation(float x, float y, const std::u32string &text);
     ~HitAnimation() = default;
 
+    bool update(float elapsed) override;
     void render(HUDPainter *hudPainter) override;
 
 private:
-    bool doUpdate() override;
-
-    static constexpr auto TotalTime = 3.0f;
-
-    float m_x;
-    float m_y;
+    glm::vec2 m_center;
+    glm::vec2 m_scale;
+    float m_alpha;
     std::u32string m_text;
+    std::unique_ptr<ParallelAnimation> m_animation;
 };
 
 HitAnimation::HitAnimation(float x, float y, const std::u32string &text)
-    : m_x(x)
-    , m_y(y)
+    : m_center(x, y)
     , m_text(text)
+    , m_animation(new ParallelAnimation)
 {
-}
+    auto scaleAnimation = std::make_unique<SequentialAnimation>();
+    scaleAnimation->addVec2Animation<Tweeners::OutBounce>(&m_scale, glm::vec2(0), glm::vec2(1), 1.0f);
+    scaleAnimation->addIdleAnimation(0.25f);
+    scaleAnimation->addVec2Animation<Tweeners::Linear>(&m_scale, glm::vec2(1), glm::vec2(3, 0), 0.5f);
+    m_animation->addAnimation(std::move(scaleAnimation));
 
-bool HitAnimation::doUpdate()
-{
-    return m_time < TotalTime;
+    auto alphaAnimation = std::make_unique<SequentialAnimation>();
+    alphaAnimation->addFloatAnimation<Tweeners::Linear>(&m_alpha, 0.0f, 0.75f, 0.5f);
+    alphaAnimation->addIdleAnimation(0.75f);
+    alphaAnimation->addFloatAnimation<Tweeners::Linear>(&m_alpha, 0.75, 0.0f, 0.5f);
+    m_animation->addAnimation(std::move(alphaAnimation));
 }
 
 void HitAnimation::render(HUDPainter *hudPainter)
 {
-    static const HUDPainter::Gradient gradient = {
-        { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
+    const HUDPainter::Gradient gradient = {
+        { 0, 0 }, { 1, 0 }, { 1, 1, 1, m_alpha }, { 1, 0, 0, m_alpha }
     };
-    hudPainter->setFont(font(120));
-    const float t = m_time / TotalTime;
-    const float x = tween<Tweeners::InOutBack<float>>(-400.0f, 400.0f, t);
-    hudPainter->translate(x, 0);
-#if 0
-    hudPainter->rotate(m_trackTime * 1.2f);
-    hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
-#endif
-    hudPainter->drawText(m_x, m_y, gradient, 0, m_text);
+    hudPainter->resetTransform();
+    hudPainter->setFont(font(80));
+
+    hudPainter->translate(m_center);
+    hudPainter->scale(m_scale);
+
+    hudPainter->drawText(0, 0, gradient, 0, m_text);
+}
+
+bool HitAnimation::update(float elapsed)
+{
+    return m_animation->update(elapsed);
 }
 
 World::World(ShaderManager *shaderManager)
@@ -129,7 +247,7 @@ World::World(ShaderManager *shaderManager)
     initializeTrackMesh();
     updateCamera(true);
 
-    m_textAnimations.emplace_back(new HitAnimation(0, 0, U"hello!"s));
+    m_textAnimations.emplace_back(new HitAnimation(-200, 100, U"PERFECT!"s));
 }
 
 World::~World() = default;

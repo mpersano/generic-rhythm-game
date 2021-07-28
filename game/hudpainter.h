@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 namespace GX {
 class FontCache;
@@ -44,10 +45,14 @@ public:
     GX::BoxI textBoundingBox(const std::u32string &text);
 
     void resetTransform();
+    void scale(const glm::vec2 &s);
     void scale(float sx, float sy);
     void scale(float s);
     void translate(float dx, float dy);
+    void translate(const glm::vec2 &p);
     void rotate(float angle);
+    void saveTransform();
+    void restoreTransform();
 
 private:
     void updateSceneBox(int width, int height);
@@ -61,4 +66,5 @@ private:
     GX::BoxF m_sceneBox = {};
     GX::FontCache *m_font = nullptr;
     glm::mat4 m_transform; // TODO: glm::mat3
+    std::vector<glm::mat4> m_transformStack;
 };
