@@ -12,15 +12,15 @@
 
 using namespace std::string_literals;
 
-HUDPainter::HUDPainter()
-    : m_fontCache(new GX::FontCache)
-    , m_spriteBatcher(new GX::SpriteBatcher)
-{
-    const auto fontPath = "assets/fonts/OpenSans_Regular.ttf"s;
-    if (!m_fontCache->load(fontPath, 120)) {
-        spdlog::error("Failed to load font {}", fontPath);
-    }
+namespace {
 
+static const auto fontPath = "assets/fonts/OpenSans_Regular.ttf"s;
+
+}
+
+HUDPainter::HUDPainter()
+    : m_spriteBatcher(new GX::SpriteBatcher)
+{
     m_textProgram = loadProgram("text.vert", nullptr, "text.frag");
 }
 
@@ -37,6 +37,7 @@ void HUDPainter::resize(int width, int height)
 void HUDPainter::startPainting()
 {
     resetTransform();
+    m_font = nullptr;
     m_spriteBatcher->startBatch();
 }
 
@@ -45,8 +46,24 @@ void HUDPainter::donePainting()
     m_spriteBatcher->renderBatch();
 }
 
+void HUDPainter::setFont(const Font &font)
+{
+    auto it = m_fonts.find(font);
+    if (it == m_fonts.end()) {
+        auto fontCache = std::make_unique<GX::FontCache>();
+        if (!fontCache->load(font.fontPath, font.pixelHeight)) {
+            spdlog::error("Failed to load font {}", font.fontPath);
+        }
+        it = m_fonts.emplace(font, std::move(fontCache)).first;
+    }
+    m_font = it->second.get();
+}
+
 void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text)
 {
+    if (!m_font)
+        return;
+
     const auto boundingBox = textBoundingBox(text);
 
     const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
@@ -55,7 +72,7 @@ void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, c
     m_spriteBatcher->setBatchProgram(m_textProgram.get());
 
     for (char32_t ch : text) {
-        const auto glyph = m_fontCache->getGlyph(ch);
+        const auto glyph = m_font->getGlyph(ch);
         if (!glyph)
             continue;
         const auto p0 = glyphPosition + glm::vec2(glyph->boundingBox.min);
@@ -87,6 +104,9 @@ void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, c
 
 void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text)
 {
+    if (!m_font)
+        return;
+
     const auto boundingBox = textBoundingBox(text);
 
     const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
@@ -106,7 +126,7 @@ void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth,
     auto glyphPosition = startPosition;
 
     for (char32_t ch : text) {
-        const auto glyph = m_fontCache->getGlyph(ch);
+        const auto glyph = m_font->getGlyph(ch);
         if (!glyph)
             continue;
         const auto p0 = glyphPosition + glm::vec2(glyph->boundingBox.min);
@@ -137,11 +157,14 @@ void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth,
 
 GX::BoxI HUDPainter::textBoundingBox(const std::u32string &text)
 {
+    if (!m_font)
+        return {};
+
     GX::BoxI result;
     auto offset = glm::ivec2(0);
 
     for (char32_t ch : text) {
-        const auto glyph = m_fontCache->getGlyph(ch);
+        const auto glyph = m_font->getGlyph(ch);
         if (!glyph) {
             spdlog::warn("Failed to locate glyph {}", static_cast<int>(ch));
             continue;
@@ -204,4 +227,12 @@ void HUDPainter::translate(float dx, float dy)
 void HUDPainter::rotate(float angle)
 {
     m_transform = glm::rotate(m_transform, angle, glm::vec3(0, 0, 1));
+}
+
+std::size_t HUDPainter::FontHasher::operator()(const Font &font) const
+{
+    std::size_t hash = 17;
+    hash = hash * 31 + static_cast<std::size_t>(font.pixelHeight);
+    hash = hash * 31 + std::hash<std::string>()(font.fontPath);
+    return hash;
 }

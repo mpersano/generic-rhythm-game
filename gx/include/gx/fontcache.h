@@ -37,6 +37,8 @@ private:
 
     std::vector<unsigned char> m_ttfBuffer;
     stbtt_fontinfo m_font;
+    // TODO: FontCache shouldn't own TextureAtlas, we want to have multiple fonts sharing the same
+    // texture atlas
     TextureAtlas m_textureAtlas;
     std::unordered_map<int, std::unique_ptr<Glyph>> m_glyphs;
     float m_scale = 0.0f;

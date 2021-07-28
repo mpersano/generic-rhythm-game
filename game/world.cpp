@@ -37,6 +37,11 @@ const Material *debugMaterial()
     return &material;
 }
 
+HUDPainter::Font font(int pixelHeight)
+{
+    return { "assets/fonts/OpenSans_Regular.ttf"s, pixelHeight };
+}
+
 std::string meshPath(const std::string &basename)
 {
     return std::string("assets/meshes/") + basename;
@@ -184,10 +189,10 @@ void World::renderHUD(HUDPainter *hudPainter) const
     static const HUDPainter::Gradient gradient = {
         { 0, 0 }, { 1, 0 }, { 1, 1, 1, 1 }, { 1, 0, 0, 1 }
     };
+    hudPainter->setFont(font(120));
     hudPainter->rotate(m_trackTime * 1.2f);
     hudPainter->scale(1.5f + 0.5f * sin(2.f * m_trackTime));
     hudPainter->drawText(0, 0, gradient, 0, U"hello"s);
-    hudPainter->drawText(0, -20, glm::vec4(1), 0, U"world"s);
 }
 
 World::PathState World::pathStateAt(float distance) const
