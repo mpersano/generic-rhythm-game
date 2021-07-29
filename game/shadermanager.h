@@ -18,6 +18,7 @@ public:
         Debug,
         Decal,
         DecalFog,
+        Lighting,
         NumPrograms
     };
     void useProgram(Program program);
@@ -28,10 +29,12 @@ public:
         ViewMatrix,
         ModelMatrix,
         NormalMatrix,
+        ModelViewMatrix,
         BaseColorTexture,
         Eye,
         FogColor,
         FogDistance,
+        LightPosition,
         NumUniforms
     };
 

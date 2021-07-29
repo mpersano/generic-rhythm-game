@@ -22,13 +22,13 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
 const Material *beatMaterial()
 {
-    static const Material material { ShaderManager::Program::Decal, Material::None, cachedTexture("beat.png"s) };
+    static const Material material { ShaderManager::Program::Lighting, Material::None, cachedTexture("beat.png"s) };
     return &material;
 }
 
@@ -455,6 +455,9 @@ void World::render() const
     m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
     m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
     m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
+
+    m_shaderManager->useProgram(ShaderManager::Lighting);
+    m_shaderManager->setUniform(ShaderManager::LightPosition, glm::vec3(0, 10, -10));
 
     // sort track segments back-to-front for proper transparency
 

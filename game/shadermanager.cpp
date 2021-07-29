@@ -25,6 +25,7 @@ loadProgram(ShaderManager::Program id)
         { "debug.vert", nullptr, "debug.frag" }, // Debug
         { "decal.vert", nullptr, "decal.frag" }, // Decal
         { "decalfog.vert", nullptr, "decalfog.frag" }, // DecalFog
+        { "ads.vert", nullptr, "ads.frag" }, // Lighting
     };
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 
@@ -68,10 +69,12 @@ int ShaderManager::uniformLocation(Uniform id)
             "viewMatrix",
             "modelMatrix",
             "normalMatrix",
+            "modelViewMatrix",
             "baseColorTexture",
             "eye",
             "fogColor",
             "fogDistance",
+            "lightPosition",
             // clang-format on
         };
         static_assert(std::extent_v<decltype(uniformNames)> == NumUniforms, "expected number of uniforms to match");
