@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QGraphicsItem>
 #include <QMouseEvent>
+#include <QScopedValueRollback>
 #include <QStyleOptionGraphicsItem>
 #include <QThread>
 
@@ -109,9 +110,16 @@ class MarkerItem : public QGraphicsLineItem
 public:
     explicit MarkerItem(Track *track, QGraphicsItem *parent = nullptr);
 
+    // HACK
+    bool updatingTrackPosition() const
+    {
+        return m_updatingTrackPosition;
+    }
+
 protected:
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
     Track *m_track;
+    bool m_updatingTrackPosition = false;
 };
 
 MarkerItem::MarkerItem(Track *track, QGraphicsItem *parent)
@@ -130,6 +138,9 @@ QVariant MarkerItem::itemChange(GraphicsItemChange change, const QVariant &value
         return updatePos;
     }
     case ItemPositionHasChanged: {
+        if (m_updatingTrackPosition)
+            break;
+        QScopedValueRollback<bool> r(m_updatingTrackPosition, true);
         const auto pos = value.toPointF();
         const auto start = static_cast<float>(-pos.y()) / PixelsPerSecond;
         m_track->setPlaybackStartPosition(start);
@@ -246,7 +257,7 @@ TrackView::TrackView(Track *track, QWidget *parent)
     addAction(deleteAction);
 
     m_markerItem = new MarkerItem(m_track);
-    m_markerItem->setPen(QPen(Qt::red, 4));
+    m_markerItem->setPen(QPen(Qt::red, 8));
     m_markerItem->setVisible(m_track->isValid());
     m_markerItem->setLine(HorizMargin, 0, HorizMargin + WaveformWidth + EventAreaWidth, 0);
     scene()->addItem(m_markerItem);
@@ -257,9 +268,10 @@ TrackView::TrackView(Track *track, QWidget *parent)
 
 void TrackView::updatePlaybackPosition()
 {
+    if (m_markerItem->updatingTrackPosition())
+        return;
     const auto y = -PixelsPerSecond * m_track->playbackPosition();
     m_markerItem->setPos(0, y);
-
     centerOn(sceneRect().center().x(), y);
 }
 
