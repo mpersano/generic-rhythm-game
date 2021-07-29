@@ -42,6 +42,13 @@ public:
         m_currentProgram->program->setUniform(location, std::forward<T>(value));
     }
 
+    // HACK FIXME: can't rely on m_currentProgram always having the currently bound program,
+    // other components bind shaders outside ShaderManager#@!!!
+    void clearCurrentProgram()
+    {
+        m_currentProgram = nullptr;
+    }
+
 private:
     int uniformLocation(Uniform uniform);
 
