@@ -1,4 +1,4 @@
-#include "loadmesh.h"
+#include "meshutils.h"
 
 #include "mesh.h"
 
@@ -10,13 +10,7 @@
 #include <fstream>
 #include <vector>
 
-struct MeshVertex {
-    glm::vec3 position;
-    glm::vec2 texcoord;
-    glm::vec3 normal;
-};
-
-static std::unique_ptr<Mesh> makeMesh(const std::vector<MeshVertex> &vertices)
+std::unique_ptr<Mesh> makeMesh(const std::vector<MeshVertex> &vertices, GLenum primitive)
 {
     static const std::vector<Mesh::VertexAttribute> attributes = {
         { 3, GL_FLOAT, offsetof(MeshVertex, position) },
@@ -24,7 +18,7 @@ static std::unique_ptr<Mesh> makeMesh(const std::vector<MeshVertex> &vertices)
         { 3, GL_FLOAT, offsetof(MeshVertex, normal) },
     };
 
-    auto mesh = std::make_unique<Mesh>(GL_TRIANGLES);
+    auto mesh = std::make_unique<Mesh>(primitive);
     mesh->setVertexCount(vertices.size());
     mesh->setVertexSize(sizeof(MeshVertex));
     mesh->setVertexAttributes(attributes);

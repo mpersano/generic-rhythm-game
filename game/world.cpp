@@ -3,9 +3,9 @@
 #include "bezier.h"
 #include "camera.h"
 #include "hudpainter.h"
-#include "loadmesh.h"
 #include "material.h"
 #include "mesh.h"
+#include "meshutils.h"
 #include "renderer.h"
 #include "shadermanager.h"
 #include "track.h"
@@ -22,7 +22,7 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::DecalFog, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
@@ -549,29 +549,6 @@ static void initializeSegment(std::vector<glm::vec3> &vertices, const glm::vec3 
     initializeSegment(vertices, mid, to, level - 1);
 }
 
-struct TrackMeshVertex {
-    glm::vec3 position;
-    glm::vec2 texcoord;
-};
-
-static std::unique_ptr<Mesh> makeTrackMesh(const std::vector<TrackMeshVertex> &vertices)
-{
-    static const std::vector<Mesh::VertexAttribute> attributes = {
-        { 3, GL_FLOAT, offsetof(TrackMeshVertex, position) },
-        { 2, GL_FLOAT, offsetof(TrackMeshVertex, texcoord) },
-    };
-
-    auto mesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
-    mesh->setVertexCount(vertices.size());
-    mesh->setVertexSize(sizeof(TrackMeshVertex));
-    mesh->setVertexAttributes(attributes);
-
-    mesh->initialize();
-    mesh->setVertexData(vertices.data());
-
-    return mesh;
-}
-
 void World::initializeTrackMesh()
 {
     std::vector<glm::vec3> controlPoints;
@@ -613,14 +590,14 @@ void World::initializeTrackMesh()
     constexpr auto VertsPerSegment = 10;
 
     for (size_t i = 0, size = m_pathParts.size(); i < size; i += VertsPerSegment) {
-        std::vector<TrackMeshVertex> vertices;
+        std::vector<MeshVertex> vertices;
         for (size_t j = i, end = std::min(size - 1, i + VertsPerSegment); j <= end; ++j) {
             const auto &part = m_pathParts[j];
             const auto texU = 3.0f * part.distance;
-            vertices.push_back({ part.state.center - part.state.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU) });
-            vertices.push_back({ part.state.center + part.state.side() * 0.5f * TrackWidth, glm::vec2(1.0f, texU) });
+            vertices.push_back({ part.state.center - part.state.side() * 0.5f * TrackWidth, glm::vec2(0.0f, texU), part.state.up() });
+            vertices.push_back({ part.state.center + part.state.side() * 0.5f * TrackWidth, glm::vec2(1.0f, texU), part.state.up() });
         }
-        auto mesh = makeTrackMesh(vertices);
+        auto mesh = makeMesh(vertices, GL_TRIANGLE_STRIP);
 
         glm::vec3 position = glm::vec3(0.0);
         for (auto &vertex : vertices) {

@@ -20,8 +20,8 @@ set(game_SOURCES
     renderer.h
     world.cpp
     world.h
-    loadmesh.cpp
-    loadmesh.h
+    meshutils.cpp
+    meshutils.h
     loadprogram.cpp
     loadprogram.h
     hudpainter.cpp
