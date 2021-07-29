@@ -19,6 +19,7 @@ public:
         Decal,
         DecalFog,
         Lighting,
+        LightingFog,
         NumPrograms
     };
     void useProgram(Program program);

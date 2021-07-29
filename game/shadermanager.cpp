@@ -24,8 +24,9 @@ loadProgram(ShaderManager::Program id)
     static const ProgramSource programSources[] = {
         { "debug.vert", nullptr, "debug.frag" }, // Debug
         { "decal.vert", nullptr, "decal.frag" }, // Decal
-        { "decalfog.vert", nullptr, "decalfog.frag" }, // DecalFog
+        { "decalfog.vert", nullptr, "decalfog.frag" }, // Decal/Fog
         { "ads.vert", nullptr, "ads.frag" }, // Lighting
+        { "adsfog.vert", nullptr, "adsfog.frag" }, // Lighting/Fog
     };
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 

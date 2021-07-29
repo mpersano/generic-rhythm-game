@@ -22,13 +22,31 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::LightingFog, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
-const Material *beatMaterial()
+const Material *beat0Material()
 {
-    static const Material material { ShaderManager::Program::Lighting, Material::None, cachedTexture("beat.png"s) };
+    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat0.png"s) };
+    return &material;
+}
+
+const Material *beat1Material()
+{
+    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat1.png"s) };
+    return &material;
+}
+
+const Material *beat2Material()
+{
+    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat2.png"s) };
+    return &material;
+}
+
+const Material *beat3Material()
+{
+    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat3.png"s) };
     return &material;
 }
 
@@ -278,7 +296,7 @@ public:
     {
         hudPainter->resetTransform();
 
-        hudPainter->translate(glm::vec2(0, 0));
+        hudPainter->translate(glm::vec2(-400, 0));
         hudPainter->scale(glm::vec2(m_scale, m_currentAlpha * m_scale));
 
         const auto s = 0.25f * ((m_scale - MinScale) / (MaxScale - MinScale));
@@ -330,8 +348,6 @@ World::World(ShaderManager *shaderManager)
     initializeMarkerMesh();
     initializeTrackMesh();
     updateCamera(true);
-
-    m_hudAnimations.emplace_back(new HitAnimation(-200, 100, U"PERFECT!"s));
 }
 
 World::~World() = default;
@@ -386,8 +402,12 @@ void World::updateBeats(InputState inputState)
     const auto pressed = [this, inputState](InputState key) {
         return ((inputState & key) != InputState::None) && ((m_prevInputState & key) == InputState::None);
     };
-#if 0
     constexpr std::array trackInputs { InputState::Fire1, InputState::Fire2, InputState::Fire3, InputState::Fire4 };
+
+    const auto textPosition = [this](int track) {
+        const auto Width = 400.0;
+        return -.5 * Width + track * Width / (m_track->eventTracks - 1);
+    };
 
     for (size_t i = 0; i < trackInputs.size(); ++i) {
         if (pressed(trackInputs[i])) {
@@ -396,8 +416,14 @@ void World::updateBeats(InputState inputState)
                     continue;
                 const auto dt = std::abs(beat.start - m_trackTime);
                 if (dt < HitWindow) {
-                    spdlog::info("hit track={} dt={}", beat.track, dt);
                     beat.state = Beat::State::Inactive;
+                    m_comboCounter->increment();
+                    const float score = dt / HitWindow;
+                    if (score < 0.25) {
+                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 100, U"PERFECT!"s));
+                    } else {
+                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 100, U"GOOD"s));
+                    }
                 }
             }
         }
@@ -407,11 +433,13 @@ void World::updateBeats(InputState inputState)
         if (beat.state != Beat::State::Active)
             continue;
         if (beat.start < m_trackTime - HitWindow) {
-            spdlog::info("missed track={}", beat.track);
             beat.state = Beat::State::Inactive;
+            m_comboCounter->clear();
+            m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 200, U"MISSED"s));
         }
     }
-#else
+
+#if 0
     if (pressed(InputState::Fire1)) {
         m_comboCounter->increment();
     }
@@ -456,8 +484,11 @@ void World::render() const
     m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
     m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
 
-    m_shaderManager->useProgram(ShaderManager::Lighting);
+    m_shaderManager->useProgram(ShaderManager::LightingFog);
     m_shaderManager->setUniform(ShaderManager::LightPosition, glm::vec3(0, 10, -10));
+    m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
+    m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
+    m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
 
     // sort track segments back-to-front for proper transparency
 
@@ -481,8 +512,22 @@ void World::render() const
         m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
-        if (beat.state == Beat::State::Active)
-            m_renderer->render(m_beatMesh.get(), beatMaterial(), beat.transform);
+        if (beat.state == Beat::State::Active) {
+            const auto *material = [&beat] {
+                switch (beat.track) {
+                case 0:
+                    return beat0Material();
+                case 1:
+                    return beat1Material();
+                case 2:
+                    return beat2Material();
+                case 3:
+                default:
+                    return beat3Material();
+                }
+            }();
+            m_renderer->render(m_beatMesh.get(), material, beat.transform);
+        }
     }
     m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
     m_renderer->end();
@@ -663,8 +708,9 @@ void World::initializeLevel(const Track *track)
 
                        const auto pathState = pathStateAt(distance);
 
-                       const auto laneWidth = TrackWidth / track->eventTracks;
-                       const auto x = -0.5f * TrackWidth + (event.track + 0.5f) * laneWidth;
+                       constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
+                       const auto laneWidth = UsableTrackWidth / track->eventTracks;
+                       const auto x = -0.5f * UsableTrackWidth + (event.track + 0.5f) * laneWidth;
                        const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, x, 0));
 
                        const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
