@@ -6,6 +6,7 @@
 #include "material.h"
 #include "mesh.h"
 #include "meshutils.h"
+#include "oggplayer.h"
 #include "renderer.h"
 #include "shadermanager.h"
 #include "track.h"
@@ -343,6 +344,7 @@ World::World(ShaderManager *shaderManager)
     , m_camera(new Camera)
     , m_renderer(new Renderer(m_shaderManager, m_camera.get()))
     , m_comboCounter(new ComboCounter)
+    , m_player(new OggPlayer)
 {
     initializeBeatMeshes();
     initializeMarkerMesh();
@@ -360,6 +362,7 @@ void World::resize(int width, int height)
 
 void World::update(InputState inputState, float elapsed)
 {
+    m_player->update();
     m_trackTime += elapsed;
     updateCamera(false);
     updateBeats(inputState);
@@ -720,6 +723,9 @@ void World::initializeLevel(const Track *track)
                        return { event.start, event.track, transform, Beat::State::Active };
                    });
     spdlog::info("drawing {} beats", m_beats.size());
+
+    if (m_player->open(track->audioFile))
+        m_player->play();
 }
 
 glm::mat4 World::PathState::transformMatrix() const

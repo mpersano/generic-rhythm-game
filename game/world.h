@@ -15,6 +15,7 @@ class Track;
 class HUDPainter;
 class HUDAnimation;
 class ComboCounter;
+class OggPlayer;
 
 class World
 {
@@ -81,5 +82,6 @@ private:
     std::vector<Beat> m_beats;
     std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
     std::unique_ptr<ComboCounter> m_comboCounter;
+    std::unique_ptr<OggPlayer> m_player;
     InputState m_prevInputState = InputState::None;
 };

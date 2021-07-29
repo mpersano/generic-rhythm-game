@@ -23,7 +23,7 @@ std::unique_ptr<Track> loadTrack(const std::string &jsonPath)
     auto track = std::make_unique<Track>();
 
     track->audioFile = document["audioFile"].GetString();
-    track->beatsPerMinute = document["beatsPerMinute"].GetInt();
+    track->beatsPerMinute = document["beatsPerMinute"].GetFloat();
     track->eventTracks = document["eventTracks"].GetInt();
 
     const auto &eventsArray = document["events"];

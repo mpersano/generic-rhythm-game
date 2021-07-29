@@ -1,5 +1,4 @@
 #include "hudpainter.h"
-#include "oggplayer.h"
 #include "shadermanager.h"
 #include "track.h"
 #include "world.h"
@@ -33,7 +32,6 @@ private:
     ALCcontext *m_alContext = nullptr;
     std::unique_ptr<ShaderManager> m_shaderManager;
     std::unique_ptr<HUDPainter> m_hudPainter;
-    std::unique_ptr<OggPlayer> m_player;
     std::unique_ptr<World> m_world;
     std::unique_ptr<Track> m_track;
     InputState m_inputState = InputState::None;
@@ -43,21 +41,15 @@ GameWindow::GameWindow()
 {
     initializeAL();
 
-    m_player = std::make_unique<OggPlayer>();
-
-    m_track = loadTrack("assets/tracks/track.json"s);
-#if 0
+    m_track = loadTrack("assets/tracks/bomb.json"s);
     if (m_track) {
         spdlog::info("Loaded track: eventTracks={} beatsPerMinute={}, {} events", m_track->eventTracks, m_track->beatsPerMinute, m_track->events.size());
-        if (m_player->open(m_track->audioFile))
-            m_player->play();
     }
-#endif
 }
 
 GameWindow::~GameWindow()
 {
-    m_player.reset();
+    m_world.reset();
     releaseAL();
 }
 
@@ -119,9 +111,6 @@ void GameWindow::paintGL()
 
 void GameWindow::update(double elapsed)
 {
-#if 0
-    m_player->update();
-#endif
     m_world->update(m_inputState, elapsed);
 }
 
