@@ -24,4 +24,7 @@ private:
     QDoubleSpinBox *m_beatsPerMinute;
     QPushButton *m_play;
     QPushButton *m_stop;
+    QPushButton *m_rewind;
+    QPushButton *m_skipForward;
+    QPushButton *m_skipBack;
 };

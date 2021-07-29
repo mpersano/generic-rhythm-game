@@ -183,17 +183,30 @@ void Track::setEventDuration(const Event *event, float duration)
     emit eventChanged(event);
 }
 
+float Track::playbackStartPosition() const
+{
+    return m_playbackStartPosition;
+}
+
 void Track::setPlaybackStartPosition(float position)
 {
     if (m_output && m_output->state() == QAudio::ActiveState)
         return;
-    m_playbackStartPosition = position;
+    auto updatedPosition = qBound(0.0f, position, duration());
+    if (qFuzzyCompare(m_playbackStartPosition, updatedPosition))
+        return;
+    m_playbackStartPosition = updatedPosition;
+    emit playbackPositionChanged();
 }
 
 void Track::startPlayback()
 {
     if (!isValid())
         return;
+
+    if (m_output)
+        m_output->stop();
+    Q_ASSERT(!m_output);
 
     QAudioDeviceInfo info(QAudioDeviceInfo::defaultOutputDevice());
     if (!info.isFormatSupported(m_format)) {
@@ -208,7 +221,7 @@ void Track::startPlayback()
     m_output = new QAudioOutput(m_format, this);
     m_output->setNotifyInterval(20);
     connect(m_output, &QAudioOutput::stateChanged, this, &Track::outputStateChanged);
-    connect(m_output, &QAudioOutput::notify, this, &Track::playbackPositionUpdated);
+    connect(m_output, &QAudioOutput::notify, this, &Track::playbackPositionChanged);
     m_output->start(m_buffer);
 }
 
@@ -223,7 +236,7 @@ void Track::stopPlayback()
 float Track::playbackPosition() const
 {
     if (!m_output)
-        return 0.0f;
+        return m_playbackStartPosition;
     return m_playbackStartPosition + static_cast<float>(m_output->elapsedUSecs()) * 1e-6;
 }
 

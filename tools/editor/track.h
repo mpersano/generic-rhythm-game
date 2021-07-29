@@ -60,6 +60,8 @@ public:
     void startPlayback();
     void stopPlayback();
     float playbackPosition() const;
+
+    float playbackStartPosition() const;
     void setPlaybackStartPosition(float start);
 
     QJsonObject save() const;
@@ -76,7 +78,7 @@ signals:
     void eventAboutToBeRemoved(const Event *event);
     void eventChanged(const Event *event);
     void eventsReset();
-    void playbackPositionUpdated();
+    void playbackPositionChanged();
     void playbackStopped();
 
 private:

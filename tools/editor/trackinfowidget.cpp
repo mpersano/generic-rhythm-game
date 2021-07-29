@@ -2,6 +2,7 @@
 
 #include "track.h"
 
+#include <QDebug>
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -9,6 +10,10 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QVBoxLayout>
+
+namespace {
+constexpr auto SkipInterval = 10;
+}
 
 TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     : QWidget(parent)
@@ -20,6 +25,9 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     , m_beatsPerMinute(new QDoubleSpinBox(this))
     , m_play(new QPushButton(tr("Play"), this))
     , m_stop(new QPushButton(tr("Stop"), this))
+    , m_rewind(new QPushButton(tr("Rew"), this))
+    , m_skipForward(new QPushButton(tr("+%1").arg(SkipInterval), this))
+    , m_skipBack(new QPushButton(tr("-%1").arg(SkipInterval), this))
 {
     auto *layout = new QVBoxLayout(this);
 
@@ -31,9 +39,12 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     formLayout->addRow(tr("Beats per minute"), m_beatsPerMinute);
     layout->addLayout(formLayout);
 
-    auto *playLayout = new QHBoxLayout(this);
+    auto *playLayout = new QHBoxLayout;
     playLayout->addWidget(m_play);
     playLayout->addWidget(m_stop);
+    playLayout->addWidget(m_rewind);
+    playLayout->addWidget(m_skipForward);
+    playLayout->addWidget(m_skipBack);
     layout->addLayout(playLayout);
 
     auto updateFileName = [this] {
@@ -67,6 +78,18 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
 
     connect(m_play, &QPushButton::clicked, m_track, &Track::startPlayback);
     connect(m_stop, &QPushButton::clicked, m_track, &Track::stopPlayback);
+    connect(m_rewind, &QPushButton::clicked, m_track, [this] {
+        m_track->stopPlayback();
+        m_track->setPlaybackStartPosition(0);
+    });
+    connect(m_skipForward, &QPushButton::clicked, m_track, [this] {
+        m_track->stopPlayback();
+        m_track->setPlaybackStartPosition(m_track->playbackStartPosition() + SkipInterval);
+    });
+    connect(m_skipBack, &QPushButton::clicked, m_track, [this] {
+        m_track->stopPlayback();
+        m_track->setPlaybackStartPosition(m_track->playbackStartPosition() - SkipInterval);
+    });
 }
 
 TrackInfoWidget::~TrackInfoWidget() = default;

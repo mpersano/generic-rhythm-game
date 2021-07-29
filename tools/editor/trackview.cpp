@@ -252,7 +252,7 @@ TrackView::TrackView(Track *track, QWidget *parent)
     scene()->addItem(m_markerItem);
 
     updatePlaybackPosition();
-    connect(m_track, &Track::playbackPositionUpdated, this, &TrackView::updatePlaybackPosition);
+    connect(m_track, &Track::playbackPositionChanged, this, &TrackView::updatePlaybackPosition);
 }
 
 void TrackView::updatePlaybackPosition()
