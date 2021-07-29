@@ -10,6 +10,7 @@ Track::Track(QObject *parent)
     : QObject(parent)
     , m_decoder(new QAudioDecoder(this))
     , m_buffer(new QBuffer(this))
+    , m_clap(new QSound(":/clap.wav"))
 {
     QAudioFormat format;
     format.setCodec("audio/x-raw");
@@ -218,10 +219,20 @@ void Track::startPlayback()
     m_buffer->open(QIODevice::ReadOnly);
     const auto startSample = static_cast<int>(m_playbackStartPosition * m_format.sampleRate());
     m_buffer->seek(startSample * sizeof(SampleType));
+    m_previousPlaybackPosition = m_playbackStartPosition;
     m_output = new QAudioOutput(m_format, this);
-    m_output->setNotifyInterval(20);
+    constexpr auto NotifyInterval = 20; // milliseconds
+    m_output->setNotifyInterval(NotifyInterval);
     connect(m_output, &QAudioOutput::stateChanged, this, &Track::outputStateChanged);
     connect(m_output, &QAudioOutput::notify, this, &Track::playbackPositionChanged);
+    connect(m_output, &QAudioOutput::notify, this, [this] {
+        const auto position = playbackPosition();
+        for (const auto &event : m_events) {
+            if (event->start >= m_previousPlaybackPosition && event->start < position)
+                m_clap->play();
+        }
+        m_previousPlaybackPosition = position;
+    });
     m_output->start(m_buffer);
 }
 

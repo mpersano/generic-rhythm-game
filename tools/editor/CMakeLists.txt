@@ -16,6 +16,7 @@ set(editor_SOURCES
     trackinfowidget.h
     waveformrenderer.cpp
     waveformrenderer.h
+    editor.qrc
 )
 
 add_executable(editor

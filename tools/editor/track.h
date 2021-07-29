@@ -3,6 +3,7 @@
 #include <QAudio>
 #include <QAudioFormat>
 #include <QObject>
+#include <QSound>
 
 #include <memory>
 
@@ -96,4 +97,6 @@ private:
     float m_beatsPerMinute = 100.0f;
     std::vector<std::unique_ptr<Event>> m_events;
     float m_playbackStartPosition = 0.0f;
+    QSound *m_clap;
+    float m_previousPlaybackPosition = 0.0f;
 };
