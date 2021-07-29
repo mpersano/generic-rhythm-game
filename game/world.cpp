@@ -22,7 +22,7 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::DecalFog, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
@@ -448,6 +448,13 @@ void World::render() const
 #else
     const auto modelMatrix = glm::mat4(1);
 #endif
+
+    m_shaderManager->clearCurrentProgram();
+
+    m_shaderManager->useProgram(ShaderManager::DecalFog);
+    m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
+    m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
+    m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
 
     // sort track segments back-to-front for proper transparency
 

@@ -17,6 +17,7 @@ public:
     enum Program {
         Debug,
         Decal,
+        DecalFog,
         NumPrograms
     };
     void useProgram(Program program);
@@ -28,6 +29,9 @@ public:
         ModelMatrix,
         NormalMatrix,
         BaseColorTexture,
+        Eye,
+        FogColor,
+        FogDistance,
         NumUniforms
     };
 
