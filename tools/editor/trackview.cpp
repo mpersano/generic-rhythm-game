@@ -60,6 +60,25 @@ public:
 
     virtual ~EventItem() = default;
 
+    Track *track()
+    {
+        return m_track;
+    }
+
+    const Track::Event *event() const
+    {
+        return m_event;
+    }
+
+    enum { Type = UserType + 1 };
+
+    int type() const override
+    {
+        return Type;
+    }
+
+    virtual void updateDuration() = 0;
+
 protected:
     static constexpr const auto Radius = 10.0;
 
@@ -103,6 +122,8 @@ class TapEventItem : public EventItem
 public:
     TapEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
 
+    void updateDuration() override;
+
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
 };
@@ -124,21 +145,63 @@ void TapEventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     painter->drawEllipse(boundingRect());
 }
 
+void TapEventItem::updateDuration()
+{
+}
+
 //
 //  HoldEventItem
 //
+
+class DurationHandleItem;
 
 class HoldEventItem : public EventItem
 {
 public:
     HoldEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
 
+    void updateDuration() override;
+
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+
+private:
+    DurationHandleItem *m_handle;
+};
+
+class DurationHandleItem : public QGraphicsItem
+{
+public:
+    explicit DurationHandleItem(HoldEventItem *eventItem);
+
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+
+    HoldEventItem *eventItem() const
+    {
+        return static_cast<HoldEventItem *>(parentItem());
+    }
+
+    enum { Type = UserType + 2 };
+
+    int type() const override
+    {
+        return Type;
+    }
+
+    void updatePosition();
+
+protected:
+    static constexpr const auto Radius = 5.0f;
+
+    QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+
+    HoldEventItem *m_eventItem;
 };
 
 HoldEventItem::HoldEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent)
     : EventItem(track, event, parent)
+    , m_handle(new DurationHandleItem(this))
 {
     setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
 }
@@ -154,6 +217,60 @@ void HoldEventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     painter->setPen(Qt::NoPen);
     painter->setBrush(eventColor(option));
     painter->drawRect(boundingRect());
+}
+
+void HoldEventItem::updateDuration()
+{
+    prepareGeometryChange();
+    m_handle->updatePosition();
+}
+
+DurationHandleItem::DurationHandleItem(HoldEventItem *eventItem)
+    : QGraphicsItem(eventItem)
+{
+    updatePosition();
+    setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
+}
+
+QRectF DurationHandleItem::boundingRect() const
+{
+    return QRectF(-Radius, -Radius, 2.0f * Radius, 2.0f * Radius);
+}
+
+void DurationHandleItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
+{
+    QColor color(Qt::white);
+    if (option->state & QStyle::State_Selected)
+        color = color.darker(200);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(color);
+    painter->drawEllipse(boundingRect());
+}
+
+QVariant DurationHandleItem::itemChange(GraphicsItemChange change, const QVariant &value)
+{
+    switch (change) {
+    case ItemPositionChange: {
+        QPointF updatePos = value.toPointF();
+        updatePos.setX(0);
+        return updatePos;
+    }
+    case ItemPositionHasChanged: {
+        const auto pos = value.toPointF();
+        const auto duration = static_cast<float>(-pos.y()) / PixelsPerSecond;
+        eventItem()->track()->setEventDuration(eventItem()->event(), duration);
+        break;
+    }
+    default:
+        break;
+    }
+    return value;
+}
+
+void DurationHandleItem::updatePosition()
+{
+    const float y = -PixelsPerSecond * eventItem()->event()->duration;
+    setPos(QPointF(0, y));
 }
 
 //
@@ -309,12 +426,16 @@ TrackView::TrackView(Track *track, QWidget *parent)
             return;
         auto *item = it->second;
         item->setPos(eventPosition(m_track, event->track, event->start));
+        item->updateDuration();
     });
 
-    auto itemToEvent = [this](const QGraphicsItem *item) {
+    auto itemToEvent = [this](const QGraphicsItem *item) -> const Track::Event * {
+        const auto *eventItem = qgraphicsitem_cast<const EventItem *>(item);
+        if (!eventItem)
+            return nullptr;
         auto it = std::find_if(m_eventItems.begin(), m_eventItems.end(),
-                               [item](const auto &entry) {
-                                   return entry.second == item;
+                               [eventItem](const auto &entry) {
+                                   return entry.second == eventItem;
                                });
         return it != m_eventItems.end() ? it->first : nullptr;
     };
@@ -331,17 +452,22 @@ TrackView::TrackView(Track *track, QWidget *parent)
     });
     addAction(deleteAction);
 
+    auto snapTimeToGrid = [this](float t) {
+        const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
+        const auto secondsPerDivision = secondsPerBeat / m_track->beatDivisor();
+        const auto tOffset = std::fmod(m_track->offset(), secondsPerDivision);
+        return secondsPerDivision * std::round((t - tOffset) / secondsPerDivision) + tOffset;
+    };
+
     auto *snapSelectedToGridAction = new QAction(this);
     snapSelectedToGridAction->setShortcuts({ Qt::Key_Space });
-    connect(snapSelectedToGridAction, &QAction::triggered, this, [this, itemToEvent] {
-        const auto selectedItems = scene()->selectedItems();
-        for (const auto *item : selectedItems) {
-            if (const auto *event = itemToEvent(item)) {
-                const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
-                const auto secondsPerDivision = secondsPerBeat / m_track->beatDivisor();
-                const auto tOffset = std::fmod(m_track->offset(), secondsPerDivision);
-                float t = secondsPerDivision * std::round((event->start - tOffset) / secondsPerDivision) + tOffset;
-                m_track->setEventStart(event, t);
+    connect(snapSelectedToGridAction, &QAction::triggered, this, [this, itemToEvent, snapTimeToGrid] {
+        auto selectedItems = scene()->selectedItems();
+        for (auto *item : selectedItems) {
+            if (auto *eventItem = qgraphicsitem_cast<EventItem *>(item)) {
+                const auto *event = eventItem->event();
+                m_track->setEventStart(event, snapTimeToGrid(event->start));
+                m_track->setEventDuration(event, snapTimeToGrid(event->duration));
             }
         }
     });
