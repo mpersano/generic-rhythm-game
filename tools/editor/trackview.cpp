@@ -42,37 +42,40 @@ QColor trackColor(int trackIndex)
 
 } // namespace
 
+//
+//  TapEventItem
+//
+
 class EventItem : public QGraphicsItem
 {
 public:
-    EventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
+    EventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr)
+        : QGraphicsItem(parent)
+        , m_track(track)
+        , m_event(event)
+    {
+        setPos(eventPosition(m_track, m_event->track, m_event->start));
+        setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
+    }
 
-    QRectF boundingRect() const override;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+    virtual ~EventItem() = default;
 
 protected:
+    static constexpr const auto Radius = 10.0;
+
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 
-private:
-    static constexpr const auto Radius = 10.0;
+    QColor eventColor(const QStyleOptionGraphicsItem *option) const
+    {
+        auto color = trackColor(m_event->track);
+        if (option->state & QStyle::State_Selected)
+            color = color.darker(200);
+        return color;
+    }
 
     Track *m_track;
     const Track::Event *m_event;
 };
-
-EventItem::EventItem(Track *track, const Track::Event *event, QGraphicsItem *parent)
-    : QGraphicsItem(parent)
-    , m_track(track)
-    , m_event(event)
-{
-    setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
-    setPos(eventPosition(track, event->track, event->start));
-}
-
-QRectF EventItem::boundingRect() const
-{
-    return QRectF(-Radius, -Radius, 2.0f * Radius, 2.0f * Radius);
-}
 
 QVariant EventItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
@@ -95,15 +98,67 @@ QVariant EventItem::itemChange(GraphicsItemChange change, const QVariant &value)
     return value;
 }
 
-void EventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
+class TapEventItem : public EventItem
 {
-    auto color = trackColor(m_event->track);
-    if (option->state & QStyle::State_Selected)
-        color = color.darker(200);
+public:
+    TapEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
+
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+};
+
+TapEventItem::TapEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent)
+    : EventItem(track, event, parent)
+{
+}
+
+QRectF TapEventItem::boundingRect() const
+{
+    return QRectF(-Radius, -Radius, 2.0f * Radius, 2.0f * Radius);
+}
+
+void TapEventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
+{
     painter->setPen(Qt::NoPen);
-    painter->setBrush(color);
+    painter->setBrush(eventColor(option));
     painter->drawEllipse(boundingRect());
 }
+
+//
+//  HoldEventItem
+//
+
+class HoldEventItem : public EventItem
+{
+public:
+    HoldEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent = nullptr);
+
+    QRectF boundingRect() const override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+};
+
+HoldEventItem::HoldEventItem(Track *track, const Track::Event *event, QGraphicsItem *parent)
+    : EventItem(track, event, parent)
+{
+    setFlags(ItemIsMovable | ItemIsSelectable | ItemSendsGeometryChanges);
+}
+
+QRectF HoldEventItem::boundingRect() const
+{
+    const auto height = m_event->duration * PixelsPerSecond;
+    return QRectF(QPointF(-Radius, -height), QSizeF(2.0f * Radius, height));
+}
+
+void HoldEventItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget * /* widget */)
+{
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(eventColor(option));
+    painter->drawRect(boundingRect());
+}
+
+//
+//  MarkerItem
+//
 
 class MarkerItem : public QGraphicsLineItem
 {
@@ -215,7 +270,16 @@ TrackView::TrackView(Track *track, QWidget *parent)
     connect(m_track, &Track::offsetChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
     auto addEvent = [this](const Track::Event *event) {
-        auto *item = new EventItem(m_track, event);
+        auto *item = [this, event]() -> EventItem * {
+            switch (event->type) {
+            case Track::Event::Type::Tap:
+                return new TapEventItem(m_track, event);
+            case Track::Event::Type::Hold:
+                return new HoldEventItem(m_track, event);
+            }
+            Q_UNREACHABLE();
+            return nullptr;
+        }();
         m_eventItems[event] = item;
         scene()->addItem(item);
     };
@@ -438,8 +502,12 @@ void TrackView::mousePressEvent(QMouseEvent *event)
             if (scenePos.x() > xLeft) {
                 const auto trackIndex = static_cast<int>((scenePos.x() - xLeft) / eventTrackWidth);
                 if (trackIndex < eventTracks) {
-                    const float t = -scenePos.y() / PixelsPerSecond;
-                    m_track->addTapEvent(trackIndex, t);
+                    const float start = -scenePos.y() / PixelsPerSecond;
+                    if (event->modifiers() & Qt::ControlModifier) {
+                        m_track->addHoldEvent(trackIndex, start, 0.5f);
+                    } else {
+                        m_track->addTapEvent(trackIndex, start);
+                    }
                 }
             }
         }

@@ -167,7 +167,7 @@ const Track::Event *Track::addTapEvent(int track, float start)
 
 const Track::Event *Track::addHoldEvent(int track, float start, float duration)
 {
-    m_events.emplace_back(new Event { Event::Type::Hold, track, start, 0.0f });
+    m_events.emplace_back(new Event { Event::Type::Hold, track, start, duration });
     const auto *event = m_events.back().get();
     emit eventAdded(event);
     return event;
