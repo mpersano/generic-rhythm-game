@@ -126,6 +126,19 @@ float Track::beatsPerMinute() const
     return m_beatsPerMinute;
 }
 
+void Track::setOffset(float offset)
+{
+    if (qFuzzyCompare(offset, m_offset))
+        return;
+    m_offset = offset;
+    emit offsetChanged(offset);
+}
+
+float Track::offset() const
+{
+    return m_offset;
+}
+
 int Track::rate() const
 {
     return m_format.sampleRate();
@@ -191,7 +204,7 @@ float Track::playbackStartPosition() const
 
 void Track::setPlaybackStartPosition(float position)
 {
-    if (m_output && m_output->state() == QAudio::ActiveState)
+    if (isPlaying())
         return;
     auto updatedPosition = qBound(0.0f, position, duration());
     if (qFuzzyCompare(m_playbackStartPosition, updatedPosition))
@@ -251,6 +264,11 @@ float Track::playbackPosition() const
     return m_playbackStartPosition + static_cast<float>(m_output->elapsedUSecs()) * 1e-6;
 }
 
+bool Track::isPlaying() const
+{
+    return m_output && m_output->state() == QAudio::ActiveState;
+}
+
 void Track::outputStateChanged(QAudio::State state)
 {
     const auto resetOutput = [this] {
@@ -292,6 +310,11 @@ QString beatsPerMinuteKey()
     return QLatin1String("beatsPerMinute");
 }
 
+QString offsetKey()
+{
+    return QLatin1String("offset");
+}
+
 QString typeKey()
 {
     return QLatin1String("type");
@@ -326,6 +349,9 @@ void Track::load(const QJsonObject &settings)
     const auto beatsPerMinute = settings[beatsPerMinuteKey()].toDouble();
     setBeatsPerMinute(beatsPerMinute);
 
+    const auto offset = settings[offsetKey()].toDouble();
+    setOffset(offset);
+
     m_events.clear();
     const auto eventsArray = settings[eventsKey()].toArray();
     std::transform(eventsArray.begin(), eventsArray.end(), std::back_inserter(m_events),
@@ -350,6 +376,7 @@ QJsonObject Track::save() const
     settings[audioFileKey()] = m_audioFile;
     settings[eventTracksKey()] = m_eventTracks;
     settings[beatsPerMinuteKey()] = m_beatsPerMinute;
+    settings[offsetKey()] = m_offset;
     QJsonArray eventArray;
     for (auto &event : m_events) {
         QJsonObject eventSettings;

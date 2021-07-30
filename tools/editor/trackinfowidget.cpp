@@ -23,6 +23,7 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     , m_rate(new QLabel(this))
     , m_eventTracks(new QSpinBox(this))
     , m_beatsPerMinute(new QDoubleSpinBox(this))
+    , m_offset(new QDoubleSpinBox(this))
     , m_play(new QPushButton(tr("Play"), this))
     , m_stop(new QPushButton(tr("Stop"), this))
     , m_rewind(new QPushButton(tr("Rew"), this))
@@ -37,6 +38,7 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     formLayout->addRow(tr("Rate"), m_rate);
     formLayout->addRow(tr("Event tracks"), m_eventTracks);
     formLayout->addRow(tr("Beats per minute"), m_beatsPerMinute);
+    formLayout->addRow(tr("Offset"), m_offset);
     layout->addLayout(formLayout);
 
     auto *playLayout = new QHBoxLayout;
@@ -75,6 +77,13 @@ TrackInfoWidget::TrackInfoWidget(Track *track, QWidget *parent)
     m_beatsPerMinute->setValue(m_track->beatsPerMinute());
     connect(m_track, &Track::beatsPerMinuteChanged, m_beatsPerMinute, &QDoubleSpinBox::setValue);
     connect(m_beatsPerMinute, qOverload<double>(&QDoubleSpinBox::valueChanged), m_track, &Track::setBeatsPerMinute);
+
+    m_offset->setRange(0, 1000);
+    m_offset->setDecimals(2);
+    m_offset->setValue(m_track->offset());
+    m_offset->setSingleStep(0.01);
+    connect(m_track, &Track::offsetChanged, m_offset, &QDoubleSpinBox::setValue);
+    connect(m_offset, qOverload<double>(&QDoubleSpinBox::valueChanged), m_track, &Track::setOffset);
 
     connect(m_play, &QPushButton::clicked, m_track, &Track::startPlayback);
     connect(m_stop, &QPushButton::clicked, m_track, &Track::stopPlayback);

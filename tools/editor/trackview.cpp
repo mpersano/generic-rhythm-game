@@ -208,10 +208,12 @@ TrackView::TrackView(Track *track, QWidget *parent)
     : QGraphicsView(parent)
     , m_track(track)
 {
+    setFocusPolicy(Qt::StrongFocus);
     setScene(new QGraphicsScene(this));
     setRenderHint(QPainter::Antialiasing);
     connect(m_track, &Track::decodingFinished, this, &TrackView::trackDecodingFinished);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
+    connect(m_track, &Track::offsetChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::eventTracksChanged, this, [this] { viewport()->update(); });
     auto addEvent = [this](const Track::Event *event) {
         auto *item = new EventItem(m_track, event);
@@ -364,9 +366,9 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
         }
 
         const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
-
-        const auto startT = snapTime(yStart / PixelsPerSecond, secondsPerBeat);
-        const auto endT = snapTime(yEnd / PixelsPerSecond, secondsPerBeat) + secondsPerBeat;
+        const auto tOffset = std::fmod(m_track->offset(), secondsPerBeat);
+        const auto startT = snapTime(yStart / PixelsPerSecond, secondsPerBeat) + tOffset;
+        const auto endT = snapTime(yEnd / PixelsPerSecond, secondsPerBeat) + secondsPerBeat + tOffset;
 
         for (float t = startT; t < endT; t += secondsPerBeat) {
             const float y = -PixelsPerSecond * t;
@@ -408,4 +410,29 @@ void TrackView::mousePressEvent(QMouseEvent *event)
         }
     }
     QGraphicsView::mousePressEvent(event);
+}
+
+void TrackView::keyPressEvent(QKeyEvent *event)
+{
+    if (m_track->isPlaying()) {
+        auto addEvent = [this](int trackIndex) {
+            m_track->addTapEvent(trackIndex, m_track->playbackPosition());
+        };
+        switch (event->key()) {
+        case Qt::Key_D:
+            addEvent(0);
+            break;
+        case Qt::Key_F:
+            addEvent(1);
+            break;
+        case Qt::Key_J:
+            addEvent(2);
+            break;
+        case Qt::Key_K:
+            addEvent(3);
+        default:
+            break;
+        }
+    }
+    QGraphicsView::keyPressEvent(event);
 }

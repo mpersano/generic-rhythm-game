@@ -22,6 +22,7 @@ private:
     QLabel *m_rate;
     QSpinBox *m_eventTracks;
     QDoubleSpinBox *m_beatsPerMinute;
+    QDoubleSpinBox *m_offset;
     QPushButton *m_play;
     QPushButton *m_stop;
     QPushButton *m_rewind;

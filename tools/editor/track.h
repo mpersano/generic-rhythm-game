@@ -37,6 +37,9 @@ public:
     void setBeatsPerMinute(float beatsPerMinute);
     float beatsPerMinute() const;
 
+    void setOffset(float offset);
+    float offset() const;
+
     int rate() const;
     float duration() const; // seconds
 
@@ -61,6 +64,7 @@ public:
     void startPlayback();
     void stopPlayback();
     float playbackPosition() const;
+    bool isPlaying() const;
 
     float playbackStartPosition() const;
     void setPlaybackStartPosition(float start);
@@ -74,6 +78,7 @@ signals:
     void rateChanged(int rate);
     void eventTracksChanged(int eventTracks);
     void beatsPerMinuteChanged(float beatsPerMinute);
+    void offsetChanged(float offset);
     void durationChanged(float duration);
     void eventAdded(const Event *event);
     void eventAboutToBeRemoved(const Event *event);
@@ -95,6 +100,7 @@ private:
     std::vector<SampleType> m_samples;
     int m_eventTracks = 4;
     float m_beatsPerMinute = 100.0f;
+    float m_offset = 0.0f;
     std::vector<std::unique_ptr<Event>> m_events;
     float m_playbackStartPosition = 0.0f;
     QSound *m_clap;
