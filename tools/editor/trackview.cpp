@@ -18,7 +18,7 @@ constexpr auto HorizMargin = 20.0f;
 constexpr auto VertMargin = 20.0f;
 constexpr auto WaveformWidth = 100.0f;
 constexpr auto EventAreaWidth = 500.0f;
-constexpr auto PixelsPerSecond = 150.0f;
+constexpr auto PixelsPerSecond = 300.0f;
 
 float trackX(const Track *track, int trackIndex)
 {
@@ -210,7 +210,6 @@ TrackView::TrackView(Track *track, QWidget *parent)
 {
     setFocusPolicy(Qt::StrongFocus);
     setScene(new QGraphicsScene(this));
-    setRenderHint(QPainter::Antialiasing);
     connect(m_track, &Track::decodingFinished, this, &TrackView::trackDecodingFinished);
     connect(m_track, &Track::beatsPerMinuteChanged, this, [this] { viewport()->update(); });
     connect(m_track, &Track::offsetChanged, this, [this] { viewport()->update(); });
@@ -307,7 +306,6 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
     const auto yEnd = std::min(static_cast<float>(-visibleSceneRect.topLeft().y()), trackHeight);
 
     painter->save();
-    painter->setRenderHints(QPainter::Antialiasing, true);
 
     painter->setPen(Qt::white);
 
@@ -358,7 +356,7 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
         drawVerticalLine(HorizMargin + WaveformWidth);
         drawVerticalLine(HorizMargin + WaveformWidth + EventAreaWidth);
 
-        painter->setPen(Qt::darkGray);
+        painter->setPen(Qt::gray);
 
         for (int i = 0, eventTracks = m_track->eventTracks(); i < eventTracks; ++i) {
             const float x = HorizMargin + WaveformWidth + (i + 1) * EventAreaWidth / (eventTracks + 1);
@@ -366,13 +364,24 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
         }
 
         const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
+        const auto secondsPerDivison = secondsPerBeat / m_track->beatDivisor();
         const auto tOffset = std::fmod(m_track->offset(), secondsPerBeat);
         const auto startT = snapTime(yStart / PixelsPerSecond, secondsPerBeat) + tOffset;
         const auto endT = snapTime(yEnd / PixelsPerSecond, secondsPerBeat) + secondsPerBeat + tOffset;
 
-        for (float t = startT; t < endT; t += secondsPerBeat) {
+        const auto drawHorizontalLine = [painter](float t) {
             const float y = -PixelsPerSecond * t;
             painter->drawLine(QPointF(HorizMargin + WaveformWidth, y), QPointF(HorizMargin + WaveformWidth + EventAreaWidth, y));
+        };
+
+        for (float t = startT; t < endT; t += secondsPerBeat) {
+            painter->setPen(QPen(Qt::gray, 2));
+            drawHorizontalLine(t);
+
+            painter->setPen(Qt::darkGray);
+            for (int i = 1; i < m_track->beatDivisor(); ++i) {
+                drawHorizontalLine(t + i * secondsPerDivison);
+            }
         }
     }
 

@@ -139,6 +139,11 @@ float Track::offset() const
     return m_offset;
 }
 
+int Track::beatDivisor() const
+{
+    return 4;
+}
+
 int Track::rate() const
 {
     return m_format.sampleRate();

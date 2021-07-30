@@ -40,6 +40,8 @@ public:
     void setOffset(float offset);
     float offset() const;
 
+    int beatDivisor() const;
+
     int rate() const;
     float duration() const; // seconds
 
