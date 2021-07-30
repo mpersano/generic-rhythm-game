@@ -239,23 +239,49 @@ TrackView::TrackView(Track *track, QWidget *parent)
         for (const auto *event : m_track->events())
             addEvent(event);
     });
+    connect(m_track, &Track::eventChanged, this, [this](const Track::Event *event) {
+        auto it = m_eventItems.find(event);
+        if (it == m_eventItems.end())
+            return;
+        auto *item = it->second;
+        item->setPos(eventPosition(m_track, event->track, event->start));
+    });
+
+    auto itemToEvent = [this](const QGraphicsItem *item) {
+        auto it = std::find_if(m_eventItems.begin(), m_eventItems.end(),
+                               [item](const auto &entry) {
+                                   return entry.second == item;
+                               });
+        return it != m_eventItems.end() ? it->first : nullptr;
+    };
 
     auto *deleteAction = new QAction(this);
     deleteAction->setShortcuts({ QKeySequence::Delete, Qt::Key_Backspace });
-    connect(deleteAction, &QAction::triggered, this, [this] {
+    connect(deleteAction, &QAction::triggered, this, [this, itemToEvent] {
         const auto selectedItems = scene()->selectedItems();
         for (const auto *item : selectedItems) {
-            auto it = std::find_if(m_eventItems.begin(), m_eventItems.end(),
-                                   [item](const auto &entry) {
-                                       return entry.second == item;
-                                   });
-            if (it != m_eventItems.end()) {
-                const auto *event = it->first;
+            if (const auto *event = itemToEvent(item)) {
                 m_track->removeEvent(event);
             }
         }
     });
     addAction(deleteAction);
+
+    auto *snapSelectedToGridAction = new QAction(this);
+    snapSelectedToGridAction->setShortcuts({ Qt::Key_Space });
+    connect(snapSelectedToGridAction, &QAction::triggered, this, [this, itemToEvent] {
+        const auto selectedItems = scene()->selectedItems();
+        for (const auto *item : selectedItems) {
+            if (const auto *event = itemToEvent(item)) {
+                const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
+                const auto secondsPerDivision = secondsPerBeat / m_track->beatDivisor();
+                const auto tOffset = std::fmod(m_track->offset(), secondsPerDivision);
+                float t = secondsPerDivision * std::round((event->start - tOffset) / secondsPerDivision) + tOffset;
+                m_track->setEventStart(event, t);
+            }
+        }
+    });
+    addAction(snapSelectedToGridAction);
 
     m_markerItem = new MarkerItem(m_track);
     m_markerItem->setPen(QPen(Qt::red, 8));
@@ -364,7 +390,7 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
         }
 
         const auto secondsPerBeat = 60.0f / m_track->beatsPerMinute();
-        const auto secondsPerDivison = secondsPerBeat / m_track->beatDivisor();
+        const auto secondsPerDivision = secondsPerBeat / m_track->beatDivisor();
         const auto tOffset = std::fmod(m_track->offset(), secondsPerBeat);
         const auto startT = snapTime(yStart / PixelsPerSecond, secondsPerBeat) + tOffset;
         const auto endT = snapTime(yEnd / PixelsPerSecond, secondsPerBeat) + secondsPerBeat + tOffset;
@@ -380,7 +406,7 @@ void TrackView::drawBackground(QPainter *painter, const QRectF &rect)
 
             painter->setPen(Qt::darkGray);
             for (int i = 1; i < m_track->beatDivisor(); ++i) {
-                drawHorizontalLine(t + i * secondsPerDivison);
+                drawHorizontalLine(t + i * secondsPerDivision);
             }
         }
     }
