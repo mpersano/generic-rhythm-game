@@ -423,6 +423,11 @@ void World::update(InputState inputState, float elapsed)
     updateParticles(elapsed);
     updateTextAnimations(elapsed);
     m_comboCounter->update(elapsed);
+
+    // HACK why no restart
+    if (m_player->state() != OggPlayer::State::Playing) {
+        m_player->close();
+    }
 }
 
 void World::updateCamera(bool snapToPosition)
@@ -835,12 +840,9 @@ void World::renderHUD(HUDPainter *hudPainter) const
     hudPainter->drawText(-580, -230, glm::vec4(1), 0, U"Jens East", HUDPainter::Alignment::Left);
 
     hudPainter->drawText(-580, -200, glm::vec4(1), 0,
-            timeToString(m_trackTime)
-            + U" / "s + timeToString(m_player->sampleCount() /  m_player->sampleRate())
-            ,
+                         timeToString(m_trackTime) + U" / "s + timeToString(m_player->sampleCount() / m_player->sampleRate()),
 
-
-            HUDPainter::Alignment::Left);
+                         HUDPainter::Alignment::Left);
 
     for (auto &animation : m_hudAnimations)
         animation->render(hudPainter);
@@ -1131,9 +1133,12 @@ void World::initializeLevel(const Track *track)
                        return beat;
                    });
     spdlog::info("drawing {} beats", m_beats.size());
+}
 
-    if (m_player->open(track->audioFile))
-        m_player->play();
+void World::startGame()
+{
+    m_player->open(m_track->audioFile);
+    m_player->play();
 }
 
 glm::mat4 World::PathState::transformMatrix() const
@@ -1141,4 +1146,9 @@ glm::mat4 World::PathState::transformMatrix() const
     const auto translate = glm::translate(glm::mat4(1), center);
     const auto rotation = glm::mat4(orientation);
     return translate * rotation;
+}
+
+bool World::isPlaying() const
+{
+    return m_player->state() == OggPlayer::State::Playing;
 }

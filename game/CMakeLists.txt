@@ -26,6 +26,8 @@ set(game_SOURCES
     loadprogram.h
     hudpainter.cpp
     hudpainter.h
+    logo.cpp
+    logo.h
 )
 
 add_executable(game ${game_SOURCES})

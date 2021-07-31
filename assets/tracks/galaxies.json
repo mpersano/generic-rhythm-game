@@ -1,7 +1,7 @@
 {
-    "audioFile": "/home/mauro/personal/rhythm-jam/build/tools/editor/galaxies.ogg",
+    "audioFile": "assets/media/galaxies-cropped.ogg",
+    "title": "Galaxies (feat. Diandra Faye)",
     "author": "Jens East",
-    "title": "Galaxies (ft. Diandra Faye)",
     "beatsPerMinute": 123,
     "eventTracks": 4,
     "events": [
@@ -430,6 +430,24 @@
             "start": 35.975608825683594,
             "track": 2,
             "type": 1
+        },
+        {
+            "duration": 0,
+            "start": 46.82926940917969,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 47.317073822021484,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 47.682926177978516,
+            "track": 2,
+            "type": 0
         }
     ],
     "offset": 0

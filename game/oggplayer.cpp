@@ -113,7 +113,8 @@ void OggPlayer::update()
         } else {
             // no more data
             m_state = State::Stopped;
-            spdlog::debug("Done playing");
+            stop();
+            spdlog::info("Done playing");
         }
     }
 }
@@ -121,11 +122,11 @@ void OggPlayer::update()
 void OggPlayer::loadAndQueueBuffer(Buffer &buffer)
 {
     const int samples = stb_vorbis_get_samples_short_interleaved(m_vorbis, m_channels, buffer.samples.data(), buffer.samples.size());
-    spdlog::debug("Read {} samples", samples);
+    spdlog::info("Read {} samples", samples);
     buffer.size = samples * m_channels;
     if (samples == 0)
         return;
-    spdlog::debug("Enqueueing {} samples", buffer.size);
+    spdlog::info("Enqueueing {} samples", buffer.size);
     alBufferData(buffer.id, m_format, buffer.samples.data(), buffer.size * sizeof(SampleType), m_sampleRate);
     alSourceQueueBuffers(m_source, 1, &buffer.id);
 }

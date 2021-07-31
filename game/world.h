@@ -29,6 +29,8 @@ public:
     void renderHUD(HUDPainter *hudPainter) const;
 
     void initializeLevel(const Track *track);
+    void startGame();
+    bool isPlaying() const;
 
 private:
     void initializeTrackMesh();

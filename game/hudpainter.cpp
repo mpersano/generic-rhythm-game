@@ -69,13 +69,13 @@ void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, c
     // ugh repeated code
     const auto xOffset = [&boundingBox, alignment]() -> float {
         switch (alignment) {
-            case Alignment::Left:
-                return -boundingBox.min.x;
-            case Alignment::Center:
-            default:
-                return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
-            case Alignment::Right:
-                return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
+        case Alignment::Left:
+            return -boundingBox.min.x;
+        case Alignment::Center:
+        default:
+            return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
+        case Alignment::Right:
+            return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
         }
     }();
 
@@ -122,13 +122,13 @@ void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth,
     const auto boundingBox = textBoundingBox(text);
     const auto xOffset = [&boundingBox, alignment]() -> float {
         switch (alignment) {
-            case Alignment::Left:
-                return -boundingBox.min.x;
-            case Alignment::Center:
-            default:
-                return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
-            case Alignment::Right:
-                return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
+        case Alignment::Left:
+            return -boundingBox.min.x;
+        case Alignment::Center:
+        default:
+            return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
+        case Alignment::Right:
+            return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
         }
     }();
 
