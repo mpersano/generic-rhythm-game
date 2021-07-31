@@ -40,6 +40,18 @@ const Material *beatMaterial(int index)
     return &materials[index];
 }
 
+const Material *longNoteMaterial(int index)
+{
+    static const std::vector<Material> materials = {
+        { ShaderManager::Program::LightingFogBlend, Material::None, cachedTexture("beat0.png"s) },
+        { ShaderManager::Program::LightingFogBlend, Material::None, cachedTexture("beat1.png"s) },
+        { ShaderManager::Program::LightingFogBlend, Material::None, cachedTexture("beat2.png"s) },
+        { ShaderManager::Program::LightingFogBlend, Material::None, cachedTexture("beat3.png"s) },
+    };
+    assert(index >= 0 && index < materials.size());
+    return &materials[index];
+}
+
 const Material *debrisMaterial(int index)
 {
     static const std::vector<Material> materials = {
@@ -678,6 +690,12 @@ void World::render() const
     m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
     m_shaderManager->setUniform(ShaderManager::ClipPlane, m_clipPlane);
 
+    m_shaderManager->useProgram(ShaderManager::LightingFogBlend);
+    m_shaderManager->setUniform(ShaderManager::LightPosition, glm::vec3(0, 10, -10));
+    m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
+    m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
+    m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
+
     m_shaderManager->useProgram(ShaderManager::Billboard);
     m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
 
@@ -698,7 +716,35 @@ void World::render() const
         return std::get<0>(lhs) > std::get<0>(rhs);
     });
 
+    // sigh.... special case: long notes
+    // our renderer sucks
+
+    bool renderedLongNote = false;
+
+    for (const auto &beat : m_beats) {
+        if (beat->type == Beat::Type::Hold) {
+            if (beat->state == Beat::State::Holding) {
+                float t = m_trackTime - beat->start;
+                float alpha = 0.5f + 0.5f * sin(5.0f * t);
+                m_shaderManager->useProgram(ShaderManager::LightingFogBlend);
+                m_shaderManager->setUniform(ShaderManager::BlendColor, glm::vec4(1, 1, 1, alpha));
+                m_renderer->begin();
+                m_renderer->render(beat->mesh.get(), longNoteMaterial(beat->track), glm::mat4(1));
+                m_renderer->end();
+            } else if (beat->state == Beat::State::HoldMissed) {
+                m_shaderManager->useProgram(ShaderManager::LightingFogBlend);
+                m_shaderManager->setUniform(ShaderManager::BlendColor, glm::vec4(.5, .5, .5, 0.75));
+                m_renderer->begin();
+                m_renderer->render(beat->mesh.get(), longNoteMaterial(beat->track), glm::mat4(1));
+                m_renderer->end();
+            }
+        }
+    }
+
+    // now render everything
+
     m_renderer->begin();
+
     for (const auto &segment : trackSegments) {
         m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
@@ -709,7 +755,9 @@ void World::render() const
             m_renderer->render(m_beatMesh.get(), beatMaterial(beat->track), beat->transform);
         } else {
             assert(beat->mesh);
-            m_renderer->render(beat->mesh.get(), beatMaterial(beat->track), glm::mat4(1));
+            if (beat->state != Beat::State::Holding && beat->state != Beat::State::HoldMissed) {
+                m_renderer->render(beat->mesh.get(), beatMaterial(beat->track), glm::mat4(1));
+            }
         }
     }
     for (const auto &debris : m_debris) {

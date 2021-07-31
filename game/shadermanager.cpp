@@ -29,6 +29,7 @@ loadProgram(ShaderManager::Program id)
         { "adsfog.vert", nullptr, "adsfog.frag" }, // Lighting/Fog
         { "adsfogclip.vert", nullptr, "adsfogclip.frag" }, // Lighting/Fog/Clip
         { "billboard.vert", "billboard.geom", "billboard.frag" }, // Billboard
+        { "adsfog.vert", nullptr, "adsfogblend.frag" }, // Lighting/Fog/Blend
     };
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 
@@ -79,6 +80,7 @@ int ShaderManager::uniformLocation(Uniform id)
             "fogDistance",
             "lightPosition",
             "clipPlane",
+            "blendColor",
             // clang-format on
         };
         static_assert(std::extent_v<decltype(uniformNames)> == NumUniforms, "expected number of uniforms to match");

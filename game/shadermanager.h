@@ -22,6 +22,7 @@ public:
         LightingFog,
         LightingFogClip,
         Billboard,
+        LightingFogBlend,
         NumPrograms
     };
     void useProgram(Program program);
@@ -39,6 +40,7 @@ public:
         FogDistance,
         LightPosition,
         ClipPlane,
+        BlendColor,
         NumUniforms
     };
 
