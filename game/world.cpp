@@ -14,6 +14,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <spdlog/spdlog.h>
 
@@ -27,27 +28,45 @@ const Material *trackMaterial()
     return &material;
 }
 
-const Material *beat0Material()
+const Material *beatMaterial(int index)
 {
-    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat0.png"s) };
-    return &material;
+    static const std::vector<Material> materials = {
+        { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat0.png"s) },
+        { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat1.png"s) },
+        { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat2.png"s) },
+        { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat3.png"s) },
+    };
+    assert(index >= 0 && index < materials.size());
+    return &materials[index];
 }
 
-const Material *beat1Material()
+const Material *debrisMaterial(int index)
 {
-    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat1.png"s) };
-    return &material;
+    static const std::vector<Material> materials = {
+        { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("debris0.png"s) },
+        { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("debris1.png"s) },
+        { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("debris2.png"s) },
+        { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("debris3.png"s) },
+    };
+    assert(index >= 0 && index < materials.size());
+    return &materials[index];
 }
 
-const Material *beat2Material()
+const Material *buttonMaterial(int index)
 {
-    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat2.png"s) };
-    return &material;
+    static const std::vector<Material> materials = {
+        { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("button0.png"s) },
+        { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("button1.png"s) },
+        { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("button2.png"s) },
+        { ShaderManager::Program::Decal, Material::Transparent, cachedTexture("button3.png"s) },
+    };
+    assert(index >= 0 && index < materials.size());
+    return &materials[index];
 }
 
-const Material *beat3Material()
+const Material *buttonMaterial()
 {
-    static const Material material { ShaderManager::Program::LightingFog, Material::None, cachedTexture("beat3.png"s) };
+    static const Material material { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("button0.png"s) };
     return &material;
 }
 
@@ -348,6 +367,7 @@ World::World(ShaderManager *shaderManager)
 {
     initializeBeatMeshes();
     initializeMarkerMesh();
+    initializeButtonMesh();
     initializeTrackMesh();
     updateCamera(true);
 }
@@ -366,6 +386,7 @@ void World::update(InputState inputState, float elapsed)
     m_trackTime += elapsed;
     updateCamera(false);
     updateBeats(inputState);
+    updateDebris(elapsed);
     updateTextAnimations(elapsed);
     m_comboCounter->update(elapsed);
 }
@@ -421,7 +442,7 @@ void World::updateBeats(InputState inputState)
     };
 
     for (auto &beat : m_beats) {
-        bool hit = false, miss = false;
+        bool hit = false, miss = false, spawnDebris = false;
         float hitDeltaT = 0.0f;
 
         switch (beat->state) {
@@ -433,6 +454,7 @@ void World::updateBeats(InputState inputState)
                     hit = true;
                     if (beat->type == Beat::Type::Tap) {
                         beat->state = Beat::State::Inactive;
+                        spawnDebris = true;
                     } else {
                         beat->state = Beat::State::Holding;
                     }
@@ -499,6 +521,32 @@ void World::updateBeats(InputState inputState)
             m_comboCounter->clear();
             m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 200, U"MISSED"s));
         }
+
+        if (spawnDebris) {
+            assert(beat->type == Beat::Type::Tap);
+            // FIXME can't just get the submatrix for rotation etc, transform is scaled!
+            // it's 4:00 AM right now but fix me later
+#if 0
+            const glm::vec3 position = glm::vec3(beat->transform[3]);
+            const glm::mat3 rotation = glm::mat3(beat->transform);
+            const glm::vec3 velocity = 0.1f * glm::vec3(beat->transform[1]);
+#endif
+            glm::vec3 scale;
+            glm::quat rotation;
+            glm::vec3 translation;
+            glm::vec3 skew;
+            glm::vec4 perspective;
+            glm::decompose(beat->transform, scale, rotation, translation, skew, perspective);
+            const auto rotationMatrix = glm::mat3_cast(rotation);
+            const glm::vec3 velocity = 0.5f * glm::vec3(rotationMatrix[0]);
+
+            // rotation axis any random vector orthogonal to direction
+            glm::vec3 u = glm::ballRand(1.0f);
+            glm::vec3 rotationAxis = glm::cross(u, rotationMatrix[0]);
+            float angularSpeed = glm::linearRand(5.0f, 10.0f);
+
+            m_debris.push_back(Debris { beat->track, translation, rotationMatrix, scale, velocity, rotationAxis, angularSpeed, 0, 3 });
+        }
     }
 
 #if 0
@@ -512,6 +560,23 @@ void World::updateBeats(InputState inputState)
 #endif
 
     m_prevInputState = inputState;
+}
+
+void World::updateDebris(float elapsed)
+{
+    auto it = m_debris.begin();
+    while (it != m_debris.end()) {
+        auto &debris = *it;
+        debris.time += elapsed;
+        if (debris.time >= debris.life) {
+            it = m_debris.erase(it);
+        } else {
+            debris.position += elapsed * debris.velocity;
+            auto rotation = glm::rotate(glm::mat4(1), elapsed * debris.angularSpeed, debris.rotationAxis);
+            debris.orientation *= glm::mat3(rotation);
+            ++it;
+        }
+    }
 }
 
 void World::updateTextAnimations(float elapsed)
@@ -584,26 +649,37 @@ void World::render() const
         if (beat->state == Beat::State::Inactive)
             continue;
         if (beat->type == Beat::Type::Tap) {
-            const auto *material = [&beat] {
-                switch (beat->track) {
-                case 0:
-                    return beat0Material();
-                case 1:
-                    return beat1Material();
-                case 2:
-                    return beat2Material();
-                case 3:
-                default:
-                    return beat3Material();
-                }
-            }();
-            m_renderer->render(m_beatMesh.get(), material, beat->transform);
+            m_renderer->render(m_beatMesh.get(), beatMaterial(beat->track), beat->transform);
         } else {
             assert(beat->mesh);
             m_renderer->render(beat->mesh.get(), debugMaterial(), glm::mat4(1));
         }
     }
-    m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
+    for (const auto &debris : m_debris) {
+        const auto rotate = glm::mat4(debris.orientation);
+        const auto translate = glm::translate(glm::mat4(1), debris.position);
+        const auto scale = glm::scale(glm::mat4(1), debris.scale);
+        const auto transform = translate * scale * rotate;
+        m_renderer->render(m_beatMesh.get(), debrisMaterial(debris.track), transform);
+    }
+
+#if 0
+        m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
+#endif
+    {
+        constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
+        const auto laneWidth = UsableTrackWidth / m_track->eventTracks;
+        const auto radius = 0.5f * laneWidth;
+
+        for (int i = 0; i < m_track->eventTracks; ++i) {
+            const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
+            const auto translate = glm::translate(glm::mat4(1), glm::vec3(0.02f, laneX, 0));
+            const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
+            const auto transform = m_markerTransform * translate * scale;
+            m_renderer->render(m_buttonMesh.get(), buttonMaterial(i), transform);
+        }
+    }
+
     m_renderer->end();
 }
 
@@ -775,6 +851,17 @@ void World::initializeMarkerMesh()
     };
 
     m_markerMesh = makeDebugMesh(vertices);
+}
+
+void World::initializeButtonMesh()
+{
+    static const std::vector<MeshVertex> vertices = {
+        { { 0, -1, -1 }, { 0, 0 }, { 1, 0, 0 } },
+        { { 0, 1, -1 }, { 1, 0 }, { 1, 0, 0 } },
+        { { 0, -1, 1 }, { 0, 1 }, { 1, 0, 0 } },
+        { { 0, 1, 1 }, { 1, 1 }, { 1, 0, 0 } },
+    };
+    m_buttonMesh = makeMesh(vertices, GL_TRIANGLE_STRIP);
 }
 
 void World::initializeLevel(const Track *track)

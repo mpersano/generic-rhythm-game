@@ -34,6 +34,7 @@ private:
     void initializeTrackMesh();
     void initializeBeatMeshes();
     void initializeMarkerMesh();
+    void initializeButtonMesh();
     struct PathState
     {
         glm::mat3 orientation;
@@ -47,6 +48,7 @@ private:
     PathState pathStateAt(float distance) const;
     void updateCamera(bool snapToPosition);
     void updateBeats(InputState inputState);
+    void updateDebris(float elapsed);
     void updateTextAnimations(float elapsed);
     void updateComboPainter(float elapsed);
 
@@ -65,6 +67,7 @@ private:
     std::vector<PathPart> m_pathParts;
     std::unique_ptr<Mesh> m_beatMesh;
     std::unique_ptr<Mesh> m_markerMesh;
+    std::unique_ptr<Mesh> m_buttonMesh;
     float m_trackTime = 0.0f;
     const Track *m_track;
     struct Beat {
@@ -86,10 +89,22 @@ private:
         State state;
         std::unique_ptr<Mesh> mesh; // if type == Hold
     };
+    struct Debris {
+        int track;
+        glm::vec3 position;
+        glm::mat3 orientation;
+        glm::vec3 scale;
+        glm::vec3 velocity;
+        glm::vec3 rotationAxis;
+        float angularSpeed;
+        float time;
+        float life;
+    };
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     glm::vec4 m_clipPlane; // to clip long notes
     std::vector<std::unique_ptr<Beat>> m_beats;
+    std::vector<Debris> m_debris;
     std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
     std::unique_ptr<ComboCounter> m_comboCounter;
     std::unique_ptr<OggPlayer> m_player;
