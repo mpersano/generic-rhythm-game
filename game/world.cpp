@@ -487,6 +487,7 @@ void World::updateBeats(InputState inputState)
         if (hit) {
             m_comboCounter->increment();
             const float score = hitDeltaT / HitWindow;
+            std::u32string animationText;
             if (score < 0.25) {
                 m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"PERFECT!"s));
             } else {
@@ -738,13 +739,13 @@ void World::initializeBeatMeshes()
     m_beatMesh = loadMesh(meshPath("beat.obj"));
 }
 
-static std::unique_ptr<Mesh> makeDebugMesh(const std::vector<glm::vec3> &vertices)
+static std::unique_ptr<Mesh> makeDebugMesh(const std::vector<glm::vec3> &vertices, GLenum primitive = GL_TRIANGLE_STRIP)
 {
     static const std::vector<Mesh::VertexAttribute> attributes = {
         { 3, GL_FLOAT, 0 }
     };
 
-    auto mesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
+    auto mesh = std::make_unique<Mesh>(primitive);
     mesh->setVertexCount(vertices.size());
     mesh->setVertexSize(sizeof(glm::vec3));
     mesh->setVertexAttributes(attributes);
@@ -809,12 +810,33 @@ void World::initializeLevel(const Track *track)
                            const auto from = Speed * event.start;
                            const auto to = Speed * (event.start + event.duration);
 
-                           const auto radius = 0.4f * laneWidth;
                            constexpr auto Height = 0.01f;
-                           const auto vLeft = glm::vec4(Height, laneX - radius, 0.0f, 1.0f);
-                           const auto vRight = glm::vec4(Height, laneX + radius, 0.0f, 1.0f);
+                           constexpr auto BevelFraction = 0.3f;
+
+                           const auto radius = 0.4f * laneWidth;
+                           const auto smallRadius = (1.0f - BevelFraction) * radius;
 
                            std::vector<glm::vec3> vertices;
+
+                           const auto addCap = [this, &vertices, radius, smallRadius, laneX](float distance) {
+                               const auto state = pathStateAt(distance);
+                               const auto transform = state.transformMatrix();
+
+                               const std::vector<glm::vec2> localVertices = {
+                                   { -smallRadius, -radius }, { smallRadius, -radius },
+                                   { -radius, -smallRadius }, { radius, -smallRadius },
+                                   { -radius, smallRadius }, { radius, smallRadius },
+                                   { -smallRadius, radius }, { smallRadius, radius },
+                                };
+
+                               for (const auto &v : localVertices)
+                                   vertices.push_back(glm::vec3(transform * glm::vec4(Height, v.x + laneX, v.y, 1)));
+                           };
+
+                           addCap(from);
+
+                           const auto vLeft = glm::vec4(Height, laneX - smallRadius, 0.0f, 1.0f);
+                           const auto vRight = glm::vec4(Height, laneX + smallRadius, 0.0f, 1.0f);
 
                            const auto addVertices = [this, &vertices, vLeft, vRight](float distance) {
                                const auto state = pathStateAt(distance);
@@ -824,10 +846,10 @@ void World::initializeLevel(const Track *track)
                            };
 
                            constexpr auto DistanceDelta = 0.1f;
-
-                           for (float d = from; d < to; d += DistanceDelta)
+                           for (float d = from + radius; d < to - radius; d += DistanceDelta)
                                addVertices(d);
-                           addVertices(to);
+
+                           addCap(to);
 
                            spdlog::info("created mesh for long note: {} vertices", vertices.size());
 
