@@ -1,0 +1,436 @@
+{
+    "audioFile": "/home/mauro/personal/rhythm-jam/build/tools/editor/galaxies.ogg",
+    "author": "Jens East",
+    "title": "Galaxies (ft. Diandra Faye)",
+    "beatsPerMinute": 123,
+    "eventTracks": 4,
+    "events": [
+        {
+            "duration": 0,
+            "start": 5.121951103210449,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 1.9512194395065308,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 2.4390244483947754,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 2.8048782348632812,
+            "track": 3,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 3.170731782913208,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 3.658536672592163,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 3.9024388790130615,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 4.390244007110596,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 4.756097793579102,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 6.341463565826416,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 5.853658676147461,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 6.707317352294922,
+            "track": 3,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 7.0731706619262695,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 7.804877758026123,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 8.658536911010742,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 7.560975551605225,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 8.292682647705078,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 1.9556097984313965,
+            "start": 17.560976028442383,
+            "track": 2,
+            "type": 1
+        },
+        {
+            "duration": 0,
+            "start": 9.756097793579102,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 10.243902206420898,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 10.609756469726562,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 10.97560977935791,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 11.707317352294922,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 12.195121765136719,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 12.560976028442383,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 12.92682933807373,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 13.658536911010742,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 14.146341323852539,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 14.512195587158203,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 14.87804889678955,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 15.243903160095215,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 15.609755516052246,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 16.09756088256836,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 16.463415145874023,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 21.463415145874023,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 21.95121955871582,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 22.317073822021484,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 22.68292808532715,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 23.414634704589844,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 23.90243911743164,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 24.268293380737305,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 23.04878044128418,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 25.365854263305664,
+            "track": 3,
+            "type": 1
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 29.268293380737305,
+            "track": 3,
+            "type": 1
+        },
+        {
+            "duration": 0,
+            "start": 11.341464042663574,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 13.292683601379395,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 33.17073059082031,
+            "track": 3,
+            "type": 1
+        },
+        {
+            "duration": 0,
+            "start": 40.975608825683594,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 41.463417053222656,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 41.82926940917969,
+            "track": 3,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 42.19512176513672,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 42.560977935791016,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 42.92683029174805,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 43.414634704589844,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 43.780487060546875,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 44.14634323120117,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 44.5121955871582,
+            "track": 1,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 44.8780517578125,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 45.3658561706543,
+            "track": 0,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 45.73170852661133,
+            "track": 3,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 46.09756088256836,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 0,
+            "start": 46.463417053222656,
+            "track": 2,
+            "type": 0
+        },
+        {
+            "duration": 1.097561001777649,
+            "start": 26.219512939453125,
+            "track": 0,
+            "type": 1
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 27.317073822021484,
+            "track": 1,
+            "type": 1
+        },
+        {
+            "duration": 0.9756097197532654,
+            "start": 28.170732498168945,
+            "track": 2,
+            "type": 1
+        },
+        {
+            "duration": 1.097561001777649,
+            "start": 30.121952056884766,
+            "track": 0,
+            "type": 1
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 31.219511032104492,
+            "track": 1,
+            "type": 1
+        },
+        {
+            "duration": 0.9756097793579102,
+            "start": 32.07316970825195,
+            "track": 2,
+            "type": 1
+        },
+        {
+            "duration": 1.097561001777649,
+            "start": 34.024391174316406,
+            "track": 0,
+            "type": 1
+        },
+        {
+            "duration": 0.8536585569381714,
+            "start": 35.121952056884766,
+            "track": 1,
+            "type": 1
+        },
+        {
+            "duration": 0.9756097197532654,
+            "start": 35.975608825683594,
+            "track": 2,
+            "type": 1
+        }
+    ],
+    "offset": 0
+}
