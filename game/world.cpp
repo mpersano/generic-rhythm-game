@@ -23,7 +23,7 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::LightingFog, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
@@ -398,6 +398,11 @@ void World::updateCamera(bool snapToPosition)
     m_camera->setUp(up);
 
     m_markerTransform = transform;
+
+    // clip plane (so we can clip long notes that get behind the marker)
+    const auto planePosition = state.center;
+    const auto planeNormal = glm::normalize(state.direction());
+    m_clipPlane = glm::vec4(planeNormal, -glm::dot(planeNormal, planePosition));
 }
 
 void World::updateBeats(InputState inputState)
@@ -492,6 +497,13 @@ void World::render() const
     m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
     m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
     m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
+
+    m_shaderManager->useProgram(ShaderManager::LightingFogClip);
+    m_shaderManager->setUniform(ShaderManager::LightPosition, glm::vec3(0, 10, -10));
+    m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
+    m_shaderManager->setUniform(ShaderManager::FogColor, glm::vec4(0, 0, 0, 1));
+    m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
+    m_shaderManager->setUniform(ShaderManager::ClipPlane, m_clipPlane);
 
     // sort track segments back-to-front for proper transparency
 

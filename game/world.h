@@ -79,6 +79,7 @@ private:
     };
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
+    glm::vec4 m_clipPlane; // to clip long notes
     std::vector<Beat> m_beats;
     std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
     std::unique_ptr<ComboCounter> m_comboCounter;

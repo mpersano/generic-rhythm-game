@@ -27,6 +27,7 @@ loadProgram(ShaderManager::Program id)
         { "decalfog.vert", nullptr, "decalfog.frag" }, // Decal/Fog
         { "ads.vert", nullptr, "ads.frag" }, // Lighting
         { "adsfog.vert", nullptr, "adsfog.frag" }, // Lighting/Fog
+        { "adsfogclip.vert", nullptr, "adsfogclip.frag" }, // Lighting/Fog/Clip
     };
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 
@@ -76,6 +77,7 @@ int ShaderManager::uniformLocation(Uniform id)
             "fogColor",
             "fogDistance",
             "lightPosition",
+            "clipPlane",
             // clang-format on
         };
         static_assert(std::extent_v<decltype(uniformNames)> == NumUniforms, "expected number of uniforms to match");

@@ -20,6 +20,7 @@ public:
         DecalFog,
         Lighting,
         LightingFog,
+        LightingFogClip,
         NumPrograms
     };
     void useProgram(Program program);
@@ -36,6 +37,7 @@ public:
         FogColor,
         FogDistance,
         LightPosition,
+        ClipPlane,
         NumUniforms
     };
 
