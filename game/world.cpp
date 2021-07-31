@@ -420,17 +420,17 @@ void World::updateBeats(InputState inputState)
     for (size_t i = 0; i < trackInputs.size(); ++i) {
         if (pressed(trackInputs[i])) {
             for (auto &beat : m_beats) {
-                if (beat.state != Beat::State::Active || beat.track != i)
+                if (beat->state != Beat::State::Active || beat->track != i)
                     continue;
-                const auto dt = std::abs(beat.start - m_trackTime);
+                const auto dt = std::abs(beat->start - m_trackTime);
                 if (dt < HitWindow) {
-                    beat.state = Beat::State::Inactive;
+                    beat->state = Beat::State::Inactive;
                     m_comboCounter->increment();
                     const float score = dt / HitWindow;
                     if (score < 0.25) {
-                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 100, U"PERFECT!"s));
+                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"PERFECT!"s));
                     } else {
-                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 100, U"GOOD"s));
+                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"GOOD"s));
                     }
                 }
             }
@@ -438,12 +438,12 @@ void World::updateBeats(InputState inputState)
     }
 
     for (auto &beat : m_beats) {
-        if (beat.state != Beat::State::Active)
+        if (beat->state != Beat::State::Active)
             continue;
-        if (beat.start < m_trackTime - HitWindow) {
-            beat.state = Beat::State::Inactive;
+        if (beat->start < m_trackTime - HitWindow) {
+            beat->state = Beat::State::Inactive;
             m_comboCounter->clear();
-            m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat.track), 200, U"MISSED"s));
+            m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 200, U"MISSED"s));
         }
     }
 
@@ -475,7 +475,7 @@ void World::updateTextAnimations(float elapsed)
 void World::render() const
 {
 #if 0
-    m_camera->setEye(glm::vec3(0, 0, 5));
+    m_camera->setEye(glm::vec3(0, 0, 15));
     m_camera->setCenter(glm::vec3(0, 0, 0));
     m_camera->setUp(glm::vec3(0, 1, 0));
 
@@ -527,9 +527,11 @@ void World::render() const
         m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
-        if (beat.state == Beat::State::Active) {
+        if (beat->state != Beat::State::Active)
+            continue;
+        if (beat->type == Beat::Type::Tap) {
             const auto *material = [&beat] {
-                switch (beat.track) {
+                switch (beat->track) {
                 case 0:
                     return beat0Material();
                 case 1:
@@ -541,7 +543,10 @@ void World::render() const
                     return beat3Material();
                 }
             }();
-            m_renderer->render(m_beatMesh.get(), material, beat.transform);
+            m_renderer->render(m_beatMesh.get(), material, beat->transform);
+        } else {
+            assert(beat->mesh);
+            m_renderer->render(beat->mesh.get(), debugMaterial(), glm::mat4(1));
         }
     }
     m_renderer->render(m_markerMesh.get(), debugMaterial(), m_markerTransform);
@@ -680,6 +685,23 @@ void World::initializeBeatMeshes()
     m_beatMesh = loadMesh(meshPath("beat.obj"));
 }
 
+static std::unique_ptr<Mesh> makeDebugMesh(const std::vector<glm::vec3> &vertices)
+{
+    static const std::vector<Mesh::VertexAttribute> attributes = {
+        { 3, GL_FLOAT, 0 }
+    };
+
+    auto mesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
+    mesh->setVertexCount(vertices.size());
+    mesh->setVertexSize(sizeof(glm::vec3));
+    mesh->setVertexAttributes(attributes);
+
+    mesh->initialize();
+    mesh->setVertexData(vertices.data());
+
+    return mesh;
+}
+
 void World::initializeMarkerMesh()
 {
     constexpr auto Left = -0.5f * TrackWidth;
@@ -698,17 +720,7 @@ void World::initializeMarkerMesh()
         { Height, Right, Top },
     };
 
-    static const std::vector<Mesh::VertexAttribute> attributes = {
-        { 3, GL_FLOAT, 0 }
-    };
-
-    m_markerMesh = std::make_unique<Mesh>(GL_TRIANGLE_STRIP);
-    m_markerMesh->setVertexCount(vertices.size());
-    m_markerMesh->setVertexSize(sizeof(glm::vec3));
-    m_markerMesh->setVertexAttributes(attributes);
-
-    m_markerMesh->initialize();
-    m_markerMesh->setVertexData(vertices.data());
+    m_markerMesh = makeDebugMesh(vertices);
 }
 
 void World::initializeLevel(const Track *track)
@@ -718,21 +730,60 @@ void World::initializeLevel(const Track *track)
     m_beats.clear();
     const auto &events = track->events;
     std::transform(events.begin(), events.end(), std::back_inserter(m_beats),
-                   [this, track](const Track::Event &event) -> Beat {
+                   [this, track](const Track::Event &event) -> std::unique_ptr<Beat> {
                        const auto distance = Speed * event.start;
 
                        const auto pathState = pathStateAt(distance);
 
                        constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
                        const auto laneWidth = UsableTrackWidth / track->eventTracks;
-                       const auto x = -0.5f * UsableTrackWidth + (event.track + 0.5f) * laneWidth;
-                       const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, x, 0));
+                       const auto laneX = -0.5f * UsableTrackWidth + (event.track + 0.5f) * laneWidth;
 
-                       const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
+                       auto beat = std::make_unique<Beat>();
 
-                       const auto transform = pathState.transformMatrix() * translate * scale;
+                       beat->type = static_cast<Beat::Type>(event.type);
+                       beat->start = event.start;
+                       beat->duration = event.duration;
+                       beat->track = event.track;
 
-                       return { event.start, event.track, transform, Beat::State::Active };
+                       if (event.type == Track::Event::Type::Tap) {
+                           const auto translate = glm::translate(glm::mat4(1), glm::vec3(0, laneX, 0));
+                           const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
+                           beat->transform = pathState.transformMatrix() * translate * scale;
+                       } else {
+                           beat->transform = glm::mat4(1);
+
+                           const auto from = Speed * event.start;
+                           const auto to = Speed * (event.start + event.duration);
+
+                           const auto radius = 0.4f * laneWidth;
+                           constexpr auto Height = 0.01f;
+                           const auto vLeft = glm::vec4(Height, laneX - radius, 0.0f, 1.0f);
+                           const auto vRight = glm::vec4(Height, laneX + radius, 0.0f, 1.0f);
+
+                           std::vector<glm::vec3> vertices;
+
+                           const auto addVertices = [this, &vertices, vLeft, vRight](float distance) {
+                               const auto state = pathStateAt(distance);
+                               const auto transform = state.transformMatrix();
+                               vertices.push_back(glm::vec3(transform * vLeft));
+                               vertices.push_back(glm::vec3(transform * vRight));
+                           };
+
+                           constexpr auto DistanceDelta = 0.1f;
+
+                           for (float d = from; d < to; d += DistanceDelta)
+                               addVertices(d);
+                           addVertices(to);
+
+                           spdlog::info("created mesh for long note: {} vertices", vertices.size());
+
+                           beat->mesh = makeDebugMesh(vertices);
+                       }
+
+                       beat->state = Beat::State::Active;
+
+                       return beat;
                    });
     spdlog::info("drawing {} beats", m_beats.size());
 

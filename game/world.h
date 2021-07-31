@@ -68,7 +68,13 @@ private:
     float m_trackTime = 0.0f;
     const Track *m_track;
     struct Beat {
+        enum class Type {
+            Tap,
+            Hold,
+        };
+        Type type;
         float start;
+        float duration;
         int track;
         glm::mat4 transform;
         enum class State {
@@ -76,11 +82,12 @@ private:
             Inactive,
         };
         State state;
+        std::unique_ptr<Mesh> mesh; // if type == Hold
     };
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     glm::vec4 m_clipPlane; // to clip long notes
-    std::vector<Beat> m_beats;
+    std::vector<std::unique_ptr<Beat>> m_beats;
     std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
     std::unique_ptr<ComboCounter> m_comboCounter;
     std::unique_ptr<OggPlayer> m_player;
