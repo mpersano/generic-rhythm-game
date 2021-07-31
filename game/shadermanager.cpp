@@ -28,6 +28,7 @@ loadProgram(ShaderManager::Program id)
         { "ads.vert", nullptr, "ads.frag" }, // Lighting
         { "adsfog.vert", nullptr, "adsfog.frag" }, // Lighting/Fog
         { "adsfogclip.vert", nullptr, "adsfogclip.frag" }, // Lighting/Fog/Clip
+        { "billboard.vert", "billboard.geom", "billboard.frag" }, // Billboard
     };
     static_assert(std::extent_v<decltype(programSources)> == ShaderManager::NumPrograms, "expected number of programs to match");
 

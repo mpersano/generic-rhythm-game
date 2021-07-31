@@ -70,6 +70,12 @@ const Material *buttonMaterial()
     return &material;
 }
 
+const Material *particleMaterial()
+{
+    static const Material material { ShaderManager::Program::Billboard, Material::AdditiveBlend, cachedTexture("star.png"s) };
+    return &material;
+}
+
 const Material *debugMaterial()
 {
     static const Material material { ShaderManager::Program::Debug, Material::None, nullptr };
@@ -89,6 +95,15 @@ std::string meshPath(const std::string &basename)
 constexpr auto Speed = 0.5f;
 constexpr auto TrackWidth = 0.25f;
 constexpr auto HitWindow = 0.2f;
+
+struct ParticleState {
+    glm::vec3 position;
+    glm::vec3 velocity;
+    glm::vec2 size;
+    float alpha;
+};
+
+constexpr auto MaxParticles = 200;
 
 } // namespace
 
@@ -369,6 +384,7 @@ World::World(ShaderManager *shaderManager)
     initializeMarkerMesh();
     initializeButtonMesh();
     initializeTrackMesh();
+    initializeParticleMesh();
     updateCamera(true);
 }
 
@@ -387,6 +403,7 @@ void World::update(InputState inputState, float elapsed)
     updateCamera(false);
     updateBeats(inputState);
     updateDebris(elapsed);
+    updateParticles(elapsed);
     updateTextAnimations(elapsed);
     m_comboCounter->update(elapsed);
 }
@@ -511,9 +528,9 @@ void World::updateBeats(InputState inputState)
             const float score = hitDeltaT / HitWindow;
             std::u32string animationText;
             if (score < 0.25) {
-                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"PERFECT!"s));
+                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), -50, U"PERFECT!"s));
             } else {
-                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"GOOD"s));
+                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), -50, U"GOOD"s));
             }
         }
 
@@ -579,6 +596,43 @@ void World::updateDebris(float elapsed)
     }
 }
 
+void World::updateParticles(float elapsed)
+{
+    auto it = m_particles.begin();
+    while (it != m_particles.end()) {
+        auto &particle = *it;
+        particle.time += elapsed;
+        if (particle.time >= particle.life) {
+            it = m_particles.erase(it);
+        } else {
+            particle.position += elapsed * particle.velocity;
+            ++it;
+        }
+    }
+    if (m_particles.size() < MaxParticles) {
+        constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
+        const auto laneWidth = UsableTrackWidth / m_track->eventTracks;
+        const auto radius = 0.5f * laneWidth;
+
+        for (int i = 0; i < m_track->eventTracks; ++i) {
+            if (static_cast<unsigned>(m_prevInputState) & (1 << i)) {
+                for (int j = 0; j < 5; ++j) {
+                    const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
+                    glm::vec3 p = glm::vec3(0.0, glm::vec2(laneX, 0) + glm::diskRand(radius));
+                    const glm::vec3 o = glm::vec3(-.2, laneX, 0);
+                    Particle particle;
+                    particle.position = o + glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
+                    particle.velocity = glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
+                    particle.size = glm::vec2(.002, .05);
+                    particle.time = 0;
+                    particle.life = 1;
+                    m_particles.push_back(particle);
+                }
+            }
+        }
+    }
+}
+
 void World::updateTextAnimations(float elapsed)
 {
     auto it = m_hudAnimations.begin();
@@ -624,6 +678,9 @@ void World::render() const
     m_shaderManager->setUniform(ShaderManager::FogDistance, glm::vec2(.1, 5.));
     m_shaderManager->setUniform(ShaderManager::ClipPlane, m_clipPlane);
 
+    m_shaderManager->useProgram(ShaderManager::Billboard);
+    m_shaderManager->setUniform(ShaderManager::Eye, m_camera->eye());
+
     // sort track segments back-to-front for proper transparency
 
     std::vector<std::tuple<float, const Mesh *>> trackSegments;
@@ -652,7 +709,7 @@ void World::render() const
             m_renderer->render(m_beatMesh.get(), beatMaterial(beat->track), beat->transform);
         } else {
             assert(beat->mesh);
-            m_renderer->render(beat->mesh.get(), debugMaterial(), glm::mat4(1));
+            m_renderer->render(beat->mesh.get(), beatMaterial(beat->track), glm::mat4(1));
         }
     }
     for (const auto &debris : m_debris) {
@@ -673,12 +730,24 @@ void World::render() const
 
         for (int i = 0; i < m_track->eventTracks; ++i) {
             const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
-            const float height = (static_cast<unsigned>(m_prevInputState) & (1 << i)) ? 0.02f : 0.03f;
+            const float height = (static_cast<unsigned>(m_prevInputState) & (1 << i)) ? 0.0f : 0.01f;
             const auto translate = glm::translate(glm::mat4(1), glm::vec3(height, laneX, 0));
             const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
             const auto transform = m_markerTransform * translate * scale;
             m_renderer->render(m_buttonMesh.get(), buttonMaterial(i), transform);
         }
+    }
+
+    if (!m_particles.empty()) {
+        std::vector<ParticleState> particleData;
+        std::transform(m_particles.begin(), m_particles.end(), std::back_inserter(particleData), [](const Particle &particle) -> ParticleState {
+            const float t = particle.time / particle.life;
+            float alpha = .25f * Tweeners::InOutQuadratic<float>()(t);
+            return { particle.position, particle.velocity, particle.size, alpha };
+        });
+        m_particleMesh->setVertexCount(m_particles.size());
+        m_particleMesh->setVertexData(particleData.data());
+        m_renderer->render(m_particleMesh.get(), particleMaterial(), m_markerTransform);
     }
 
     m_renderer->end();
@@ -811,6 +880,23 @@ void World::initializeTrackMesh()
                  distance, m_trackSegments.size(), m_pathParts.size());
 }
 
+void World::initializeParticleMesh()
+{
+    m_particleMesh = std::make_unique<Mesh>(GL_POINTS);
+
+    static const std::vector<Mesh::VertexAttribute> attributes = {
+        { 3, GL_FLOAT, offsetof(ParticleState, position) },
+        { 3, GL_FLOAT, offsetof(ParticleState, velocity) },
+        { 2, GL_FLOAT, offsetof(ParticleState, size) },
+        { 1, GL_FLOAT, offsetof(ParticleState, alpha) }
+    };
+
+    m_particleMesh->setVertexCount(MaxParticles);
+    m_particleMesh->setVertexSize(sizeof(ParticleState));
+    m_particleMesh->setVertexAttributes(attributes);
+    m_particleMesh->initialize();
+}
+
 void World::initializeBeatMeshes()
 {
     m_beatMesh = loadMesh(meshPath("beat.obj"));
@@ -838,7 +924,7 @@ void World::initializeMarkerMesh()
     constexpr auto Left = -0.5f * TrackWidth;
     constexpr auto Right = 0.5f * TrackWidth;
 
-    constexpr auto Thick = 0.025f;
+    constexpr auto Thick = 0.0125f;
     constexpr auto Height = 0.01f;
 
     constexpr auto Bottom = -0.5f * Thick;
@@ -904,21 +990,28 @@ void World::initializeLevel(const Track *track)
                            const auto radius = 0.4f * laneWidth;
                            const auto smallRadius = (1.0f - BevelFraction) * radius;
 
-                           std::vector<glm::vec3> vertices;
+                           std::vector<MeshVertex> vertices;
 
                            const auto addCap = [this, &vertices, radius, smallRadius, laneX](float distance) {
                                const auto state = pathStateAt(distance);
                                const auto transform = state.transformMatrix();
 
-                               const std::vector<glm::vec2> localVertices = {
-                                   { -smallRadius, -radius }, { smallRadius, -radius },
-                                   { -radius, -smallRadius }, { radius, -smallRadius },
-                                   { -radius, smallRadius }, { radius, smallRadius },
-                                   { -smallRadius, radius }, { smallRadius, radius },
-                                };
+                               const auto n = state.up();
 
-                               for (const auto &v : localVertices)
-                                   vertices.push_back(glm::vec3(transform * glm::vec4(Height, v.x + laneX, v.y, 1)));
+                               const std::vector<glm::vec2> localVertices = {
+                                   { -smallRadius, -radius },
+                                   { smallRadius, -radius },
+                                   { -radius, -smallRadius },
+                                   { radius, -smallRadius },
+                                   { -radius, smallRadius },
+                                   { radius, smallRadius },
+                                   { -smallRadius, radius },
+                                   { smallRadius, radius },
+                               };
+
+                               for (const auto &v : localVertices) {
+                                   vertices.push_back({ glm::vec3(transform * glm::vec4(Height, v.x + laneX, v.y, 1)), { 0, 0 }, n });
+                               }
                            };
 
                            addCap(from);
@@ -929,19 +1022,21 @@ void World::initializeLevel(const Track *track)
                            const auto addVertices = [this, &vertices, vLeft, vRight](float distance) {
                                const auto state = pathStateAt(distance);
                                const auto transform = state.transformMatrix();
-                               vertices.push_back(glm::vec3(transform * vLeft));
-                               vertices.push_back(glm::vec3(transform * vRight));
+                               const auto n = state.up();
+                               vertices.push_back({ glm::vec3(transform * vLeft), { 0, 0 }, n });
+                               vertices.push_back({ glm::vec3(transform * vRight), { 0, 0 }, n });
                            };
 
                            constexpr auto DistanceDelta = 0.1f;
-                           for (float d = from + radius; d < to - radius; d += DistanceDelta)
+                           for (float d = from + radius; d < to - radius; d += DistanceDelta) {
                                addVertices(d);
+                           }
 
                            addCap(to);
 
                            spdlog::info("created mesh for long note: {} vertices", vertices.size());
 
-                           beat->mesh = makeDebugMesh(vertices);
+                           beat->mesh = makeMesh(vertices, GL_TRIANGLE_STRIP);
                        }
 
                        beat->state = Beat::State::Active;

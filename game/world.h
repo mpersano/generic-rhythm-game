@@ -35,6 +35,7 @@ private:
     void initializeBeatMeshes();
     void initializeMarkerMesh();
     void initializeButtonMesh();
+    void initializeParticleMesh();
     struct PathState
     {
         glm::mat3 orientation;
@@ -51,6 +52,7 @@ private:
     void updateDebris(float elapsed);
     void updateTextAnimations(float elapsed);
     void updateComboPainter(float elapsed);
+    void updateParticles(float elapsed);
 
     ShaderManager *m_shaderManager;
     std::unique_ptr<Camera> m_camera;
@@ -68,6 +70,7 @@ private:
     std::unique_ptr<Mesh> m_beatMesh;
     std::unique_ptr<Mesh> m_markerMesh;
     std::unique_ptr<Mesh> m_buttonMesh;
+    std::unique_ptr<Mesh> m_particleMesh;
     float m_trackTime = 0.0f;
     const Track *m_track;
     struct Beat {
@@ -100,12 +103,20 @@ private:
         float time;
         float life;
     };
+    struct Particle {
+        glm::vec3 position;
+        glm::vec3 velocity;
+        glm::vec2 size;
+        float time;
+        float life;
+    };
     glm::vec3 m_cameraPosition;
     glm::mat4 m_markerTransform;
     glm::vec4 m_clipPlane; // to clip long notes
     std::vector<std::unique_ptr<Beat>> m_beats;
     std::vector<Debris> m_debris;
     std::vector<std::unique_ptr<HUDAnimation>> m_hudAnimations;
+    std::vector<Particle> m_particles;
     std::unique_ptr<ComboCounter> m_comboCounter;
     std::unique_ptr<OggPlayer> m_player;
     InputState m_prevInputState = InputState::None;

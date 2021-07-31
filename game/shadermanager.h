@@ -21,6 +21,7 @@ public:
         Lighting,
         LightingFog,
         LightingFogClip,
+        Billboard,
         NumPrograms
     };
     void useProgram(Program program);

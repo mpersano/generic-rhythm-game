@@ -14,6 +14,7 @@ struct Material {
     enum Flags {
         None = 0,
         Transparent = 1,
+        AdditiveBlend = 2,
     };
     unsigned flags;
     const GX::GL::Texture *texture;

@@ -7,6 +7,8 @@
 #include "mesh.h"
 #include "shadermanager.h"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <optional>
 
@@ -60,7 +62,8 @@ void Renderer::render(Iterator first, Iterator last) const
             curProgram = program;
         }
         if (const auto *texture = material->texture; curTexture != texture) {
-            texture->bind();
+            if (texture)
+                texture->bind();
             curTexture = texture;
         }
 
@@ -75,20 +78,30 @@ void Renderer::render(Iterator first, Iterator last) const
 
 void Renderer::end()
 {
-    auto it = std::stable_partition(m_drawCalls.begin(), m_drawCalls.end(), [](const DrawCall &drawCall) {
-        return (drawCall.material->flags & Material::Transparent) == 0;
+    auto solidIt = std::stable_partition(m_drawCalls.begin(), m_drawCalls.end(), [](const DrawCall &drawCall) {
+        return drawCall.material->flags == Material::None;
     });
 
     // render solid meshes
 
     glDisable(GL_BLEND);
-    render(m_drawCalls.begin(), it);
+    render(m_drawCalls.begin(), solidIt);
 
     // render transparent meshes
+
+    auto transparentIt = std::stable_partition(solidIt, m_drawCalls.end(), [](const DrawCall &drawCall) {
+        return (drawCall.material->flags & Material::Transparent) != 0;
+    });
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE); // disable writing to depth buffer
-    render(it, m_drawCalls.end());
+    render(solidIt, transparentIt);
+
+    // additive blend
+
+    glBlendFunc(GL_ONE, GL_ONE);
+    render(transparentIt, m_drawCalls.end());
+
     glDepthMask(GL_TRUE);
 }
