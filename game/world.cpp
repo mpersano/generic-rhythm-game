@@ -673,7 +673,8 @@ void World::render() const
 
         for (int i = 0; i < m_track->eventTracks; ++i) {
             const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
-            const auto translate = glm::translate(glm::mat4(1), glm::vec3(0.02f, laneX, 0));
+            const float height = (static_cast<unsigned>(m_prevInputState) & (1 << i)) ? 0.02f : 0.03f;
+            const auto translate = glm::translate(glm::mat4(1), glm::vec3(height, laneX, 0));
             const auto scale = glm::scale(glm::mat4(1), glm::vec3(0.4f * laneWidth));
             const auto transform = m_markerTransform * translate * scale;
             m_renderer->render(m_buttonMesh.get(), buttonMaterial(i), transform);

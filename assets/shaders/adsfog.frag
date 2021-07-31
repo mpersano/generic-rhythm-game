@@ -29,7 +29,7 @@ vec3 ads(vec3 baseColor, vec3 lightPosition, float lightIntensity)
 void main(void)
 {
     vec4 baseColor = texture(baseColorTexture, vs_texcoord);
-    vec3 color = ads(baseColor.xyz, lightPosition, 1.0) + ads(baseColor.xyz, eye, 0.25);
+    vec3 color = ads(baseColor.xyz, lightPosition, 1.0) + ads(baseColor.xyz, eye, 0.5);
     float fogFactor = clamp((fogDistance.y - vs_distance) / (fogDistance.y - fogDistance.x), 0.0, 1.0);
     fragColor = mix(fogColor, vec4(color, baseColor.a), fogFactor);
 }

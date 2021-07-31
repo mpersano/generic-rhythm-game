@@ -27,7 +27,7 @@ void main(void)
 {
     vec4 baseColor = texture(baseColorTexture, vs_texcoord);
 
-    vec3 color = ads(baseColor.xyz, lightPosition, 1.0) + ads(baseColor.xyz, eye, 0.25);
+    vec3 color = ads(baseColor.xyz, lightPosition, 1.0) + ads(baseColor.xyz, eye, 0.5);
 
     fragColor = vec4(color, baseColor.a);
 }
