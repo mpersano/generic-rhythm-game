@@ -410,6 +410,9 @@ void World::updateBeats(InputState inputState)
     const auto pressed = [this, inputState](InputState key) {
         return ((inputState & key) != InputState::None) && ((m_prevInputState & key) == InputState::None);
     };
+    const auto released = [this, inputState](InputState key) {
+        return ((inputState & key) == InputState::None) && ((m_prevInputState & key) != InputState::None);
+    };
     constexpr std::array trackInputs { InputState::Fire1, InputState::Fire2, InputState::Fire3, InputState::Fire4 };
 
     const auto textPosition = [this](int track) {
@@ -417,31 +420,81 @@ void World::updateBeats(InputState inputState)
         return -.5 * Width + track * Width / (m_track->eventTracks - 1);
     };
 
-    for (size_t i = 0; i < trackInputs.size(); ++i) {
-        if (pressed(trackInputs[i])) {
-            for (auto &beat : m_beats) {
-                if (beat->state != Beat::State::Active || beat->track != i)
-                    continue;
-                const auto dt = std::abs(beat->start - m_trackTime);
-                if (dt < HitWindow) {
-                    beat->state = Beat::State::Inactive;
-                    m_comboCounter->increment();
-                    const float score = dt / HitWindow;
-                    if (score < 0.25) {
-                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"PERFECT!"s));
+    for (auto &beat : m_beats) {
+        bool hit = false, miss = false;
+        float hitDeltaT = 0.0f;
+
+        switch (beat->state) {
+        case Beat::State::Active: {
+            if (pressed(trackInputs[beat->track])) {
+                // hit start of beat?
+                hitDeltaT = std::abs(beat->start - m_trackTime);
+                if (hitDeltaT < HitWindow) {
+                    hit = true;
+                    if (beat->type == Beat::Type::Tap) {
+                        beat->state = Beat::State::Inactive;
                     } else {
-                        m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"GOOD"s));
+                        beat->state = Beat::State::Holding;
+                    }
+                }
+            } else {
+                // missed start of beat?
+                if (beat->start < m_trackTime - HitWindow) {
+                    miss = true;
+                    if (beat->type == Beat::Type::Tap) {
+                        beat->state = Beat::State::Inactive;
+                    } else {
+                        beat->state = Beat::State::HoldMissed;
                     }
                 }
             }
+            break;
         }
-    }
 
-    for (auto &beat : m_beats) {
-        if (beat->state != Beat::State::Active)
-            continue;
-        if (beat->start < m_trackTime - HitWindow) {
-            beat->state = Beat::State::Inactive;
+        case Beat::State::Holding: {
+            if (released(trackInputs[beat->track])) {
+                // released on end of beat?
+                hitDeltaT = std::abs(beat->start + beat->duration - m_trackTime);
+                if (hitDeltaT < HitWindow) {
+                    hit = true;
+                    beat->state = Beat::State::Inactive;
+                } else {
+                    // released too early
+                    miss = true;
+                    beat->state = Beat::State::HoldMissed;
+                }
+            } else {
+                // missed end of beat?
+                if (beat->start + beat->duration < m_trackTime - HitWindow) {
+                    beat->state = Beat::State::Inactive;
+                    miss = true;
+                }
+            }
+            break;
+        }
+
+        case Beat::State::HoldMissed: {
+            if (beat->start + beat->duration < m_trackTime) {
+                beat->state = Beat::State::Inactive;
+            }
+            break;
+        }
+
+        case Beat::State::Inactive:
+            break;
+        }
+
+        if (hit) {
+            m_comboCounter->increment();
+            const float score = hitDeltaT / HitWindow;
+            if (score < 0.25) {
+                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"PERFECT!"s));
+            } else {
+                m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 100, U"GOOD"s));
+            }
+        }
+
+        if (miss) {
             m_comboCounter->clear();
             m_hudAnimations.emplace_back(new HitAnimation(textPosition(beat->track), 200, U"MISSED"s));
         }
@@ -527,7 +580,7 @@ void World::render() const
         m_renderer->render(std::get<1>(segment), trackMaterial(), modelMatrix);
     }
     for (const auto &beat : m_beats) {
-        if (beat->state != Beat::State::Active)
+        if (beat->state == Beat::State::Inactive)
             continue;
         if (beat->type == Beat::Type::Tap) {
             const auto *material = [&beat] {

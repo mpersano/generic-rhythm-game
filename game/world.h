@@ -80,6 +80,8 @@ private:
         enum class State {
             Active,
             Inactive,
+            Holding,
+            HoldMissed,
         };
         State state;
         std::unique_ptr<Mesh> mesh; // if type == Hold
