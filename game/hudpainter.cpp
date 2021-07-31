@@ -60,14 +60,25 @@ void HUDPainter::setFont(const Font &font)
     m_font = it->second.get();
 }
 
-void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text)
+void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text, Alignment alignment)
 {
     if (!m_font)
         return;
 
     const auto boundingBox = textBoundingBox(text);
+    // ugh repeated code
+    const auto xOffset = [&boundingBox, alignment]() -> float {
+        switch (alignment) {
+            case Alignment::Left:
+                return -boundingBox.min.x;
+            case Alignment::Center:
+            default:
+                return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
+            case Alignment::Right:
+                return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
+        }
+    }();
 
-    const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
     auto glyphPosition = glm::vec2(x, y) + glm::vec2(xOffset, 0);
 
     m_spriteBatcher->setBatchProgram(m_textProgram.get());
@@ -103,14 +114,24 @@ void HUDPainter::drawText(float x, float y, const glm::vec4 &color, int depth, c
     }
 }
 
-void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text)
+void HUDPainter::drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text, Alignment alignment)
 {
     if (!m_font)
         return;
 
     const auto boundingBox = textBoundingBox(text);
+    const auto xOffset = [&boundingBox, alignment]() -> float {
+        switch (alignment) {
+            case Alignment::Left:
+                return -boundingBox.min.x;
+            case Alignment::Center:
+            default:
+                return -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
+            case Alignment::Right:
+                return -0.5f * (boundingBox.max.x - boundingBox.min.x); // XXX check this?
+        }
+    }();
 
-    const auto xOffset = -boundingBox.min.x - 0.5f * (boundingBox.max.x - boundingBox.min.x);
     const auto startPosition = glm::vec2(x, y) + glm::vec2(xOffset, 0);
 
     const auto vertexColor = [&boundingBox, &gradient, startPosition](const glm::vec2 &p) {

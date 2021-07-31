@@ -94,6 +94,11 @@ const Material *debugMaterial()
     return &material;
 }
 
+HUDPainter::Font fontRegular(int pixelHeight)
+{
+    return { "assets/fonts/OpenSans_Regular.ttf"s, pixelHeight };
+}
+
 HUDPainter::Font font(int pixelHeight)
 {
     return { "assets/fonts/OpenSans-ExtraBold.ttf"s, pixelHeight };
@@ -801,8 +806,42 @@ void World::render() const
     m_renderer->end();
 }
 
+static std::u32string timeToString(float t)
+{
+    const auto seconds = static_cast<int>(t);
+
+    std::u32string result;
+
+    // aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+    const auto formatNumber = [&result](int value) {
+        // aaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        result.push_back((value / 10) + U'0');
+        result.push_back((value % 10) + U'0');
+    };
+
+    formatNumber(seconds / 60);
+    result.push_back(U':');
+    formatNumber(seconds % 60);
+
+    return result;
+}
+
 void World::renderHUD(HUDPainter *hudPainter) const
 {
+    hudPainter->setFont(fontRegular(40));
+    hudPainter->drawText(-580, -260, glm::vec4(1), 0, U"Galaxies (feat. Diandra Faye)", HUDPainter::Alignment::Left);
+    hudPainter->setFont(fontRegular(30));
+    hudPainter->drawText(-580, -230, glm::vec4(1), 0, U"Jens East", HUDPainter::Alignment::Left);
+
+    hudPainter->drawText(-580, -200, glm::vec4(1), 0,
+            timeToString(m_trackTime)
+            + U" / "s + timeToString(m_player->sampleCount() /  m_player->sampleRate())
+            ,
+
+
+            HUDPainter::Alignment::Left);
+
     for (auto &animation : m_hudAnimations)
         animation->render(hudPainter);
     m_comboCounter->render(hudPainter);

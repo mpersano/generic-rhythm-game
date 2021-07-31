@@ -8,7 +8,7 @@ enum class InputState : unsigned {
     Fire2 = 1 << 1,
     Fire3 = 1 << 2,
     Fire4 = 1 << 3,
-    ToggleView = 1 << 7,
+    Start = 1 << 7,
 };
 
 constexpr InputState operator&(InputState x, InputState y)

@@ -25,6 +25,8 @@ std::unique_ptr<Track> loadTrack(const std::string &jsonPath)
     track->audioFile = document["audioFile"].GetString();
     track->beatsPerMinute = document["beatsPerMinute"].GetFloat();
     track->eventTracks = document["eventTracks"].GetInt();
+    track->title = document["title"].GetString();
+    track->author = document["author"].GetString();
 
     const auto &eventsArray = document["events"];
     assert(eventsArray.IsArray());

@@ -32,6 +32,16 @@ public:
         return m_state;
     }
 
+    unsigned sampleRate() const
+    {
+        return m_sampleRate;
+    }
+
+    unsigned sampleCount() const
+    {
+        return m_sampleCount;
+    }
+
 private:
     using SampleType = int16_t;
 

@@ -17,6 +17,8 @@ struct Track {
     };
 
     std::string audioFile;
+    std::string title;
+    std::string author;
     int beatsPerMinute;
     int eventTracks;
     std::vector<Event> events;

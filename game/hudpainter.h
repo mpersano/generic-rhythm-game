@@ -34,13 +34,14 @@ public:
     };
     void setFont(const Font &font);
 
-    void drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text);
+    enum class Alignment { Left, Right, Center };
+    void drawText(float x, float y, const glm::vec4 &color, int depth, const std::u32string &text, Alignment alignment = Alignment::Center);
 
     struct Gradient {
         glm::vec2 from, to;
         glm::vec4 startColor, endColor;
     };
-    void drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text);
+    void drawText(float x, float y, const Gradient &gradient, int depth, const std::u32string &text, Alignment alignment  = Alignment::Center);
 
     GX::BoxI textBoundingBox(const std::u32string &text);
 
