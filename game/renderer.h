@@ -8,7 +8,7 @@
 #include "camera.h"
 
 class Mesh;
-class Material;
+struct Material;
 
 class ShaderManager;
 

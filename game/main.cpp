@@ -90,7 +90,7 @@ void GameWindow::initializeGL()
 
     m_world = std::make_unique<World>(m_shaderManager.get());
     m_world->resize(width(), height());
-    m_world->initializeLevel(m_track.get());
+    m_world->setTrack(m_track.get());
 
     m_logo = std::make_unique<Logo>();
 }

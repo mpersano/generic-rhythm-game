@@ -18,6 +18,9 @@
 #include <glm/gtx/string_cast.hpp>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
+#include <optional>
+
 using namespace std::string_literals;
 
 namespace {
@@ -908,6 +911,8 @@ static void initializeSegment(std::vector<glm::vec3> &vertices, const glm::vec3 
 
 void World::initializeTrackMesh()
 {
+    std::srand(1234); // glm uses std::rand, this seed gives a nice looking track on windows
+
     std::vector<glm::vec3> controlPoints;
     initializeSegment(controlPoints, glm::vec3(-10, 0, 0), glm::vec3(10, 0, 0), 5);
 
@@ -1040,20 +1045,23 @@ void World::initializeButtonMesh()
     m_buttonMesh = makeMesh(vertices, GL_TRIANGLE_STRIP);
 }
 
-void World::initializeLevel(const Track *track)
+void World::setTrack(const Track* track)
 {
     m_track = track;
+}
 
+void World::initializeLevel()
+{
     m_beats.clear();
-    const auto &events = track->events;
+    const auto &events = m_track->events;
     std::transform(events.begin(), events.end(), std::back_inserter(m_beats),
-                   [this, track](const Track::Event &event) -> std::unique_ptr<Beat> {
+                   [this](const Track::Event &event) -> std::unique_ptr<Beat> {
                        const auto distance = Speed * event.start;
 
                        const auto pathState = pathStateAt(distance);
 
                        constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
-                       const auto laneWidth = UsableTrackWidth / track->eventTracks;
+                       const auto laneWidth = UsableTrackWidth / m_track->eventTracks;
                        const auto laneX = -0.5f * UsableTrackWidth + (event.track + 0.5f) * laneWidth;
 
                        auto beat = std::make_unique<Beat>();
@@ -1081,7 +1089,7 @@ void World::initializeLevel(const Track *track)
 
                            std::vector<MeshVertex> vertices;
 
-                           const auto addCap = [this, &vertices, radius, smallRadius, laneX](float distance) {
+                           const auto addCap = [this, &vertices, radius, smallRadius, laneX, Height](float distance) {
                                const auto state = pathStateAt(distance);
                                const auto transform = state.transformMatrix();
 
@@ -1137,6 +1145,8 @@ void World::initializeLevel(const Track *track)
 
 void World::startGame()
 {
+    m_trackTime = 0.0f;
+    initializeLevel();
     m_player->open(m_track->audioFile);
     m_player->play();
 }

@@ -1,3 +1,5 @@
+find_package(Boost REQUIRED)
+
 set(game_SOURCES
     main.cpp
     oggplayer.cpp
@@ -37,9 +39,12 @@ target_link_libraries(
     gx
     rapidjson
     OpenAL
+    Boost::headers
 )
 
-add_custom_command(TARGET game
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_CURRENT_BINARY_DIR}/assets"
-)
+if (NOT WIN32)
+    add_custom_command(TARGET game
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_CURRENT_BINARY_DIR}/assets"
+    )
+endif()

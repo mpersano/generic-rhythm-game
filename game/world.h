@@ -11,7 +11,7 @@ class ShaderManager;
 class Camera;
 class Renderer;
 class Mesh;
-class Track;
+struct Track;
 class HUDPainter;
 class HUDAnimation;
 class ComboCounter;
@@ -28,11 +28,13 @@ public:
     void render() const;
     void renderHUD(HUDPainter *hudPainter) const;
 
-    void initializeLevel(const Track *track);
+    void setTrack(const Track* track);
+
     void startGame();
     bool isPlaying() const;
 
 private:
+    void initializeLevel();
     void initializeTrackMesh();
     void initializeBeatMeshes();
     void initializeMarkerMesh();
