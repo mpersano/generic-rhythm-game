@@ -27,7 +27,7 @@ namespace {
 
 const Material *trackMaterial()
 {
-    static const Material material { ShaderManager::Program::Lighting, Material::Transparent, cachedTexture("track.png"s) };
+    static const Material material { ShaderManager::Program::LightingFog, Material::Transparent, cachedTexture("track.png"s) };
     return &material;
 }
 
