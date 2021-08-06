@@ -7,6 +7,7 @@
 #include "mesh.h"
 #include "meshutils.h"
 #include "oggplayer.h"
+#include "particlesystem.h"
 #include "renderer.h"
 #include "shadermanager.h"
 #include "track.h"
@@ -85,12 +86,6 @@ const Material *buttonMaterial()
     return &material;
 }
 
-const Material *particleMaterial()
-{
-    static const Material material { ShaderManager::Program::Billboard, Material::AdditiveBlend, cachedTexture("star.png"s) };
-    return &material;
-}
-
 const Material *debugMaterial()
 {
     static const Material material { ShaderManager::Program::Debug, Material::None, nullptr };
@@ -115,15 +110,6 @@ std::string meshPath(const std::string &basename)
 constexpr auto Speed = 0.5f;
 constexpr auto TrackWidth = 0.25f;
 constexpr auto HitWindow = 0.2f;
-
-struct ParticleState {
-    glm::vec3 position;
-    glm::vec3 velocity;
-    glm::vec2 size;
-    float alpha;
-};
-
-constexpr auto MaxParticles = 200;
 
 } // namespace
 
@@ -397,6 +383,7 @@ World::World(ShaderManager *shaderManager)
     : m_shaderManager(shaderManager)
     , m_camera(new Camera)
     , m_renderer(new Renderer(m_shaderManager, m_camera.get()))
+    , m_particleSystem(new ParticleSystem(m_shaderManager, m_camera.get()))
     , m_comboCounter(new ComboCounter)
     , m_player(new OggPlayer)
 {
@@ -404,7 +391,6 @@ World::World(ShaderManager *shaderManager)
     initializeMarkerMesh();
     initializeButtonMesh();
     initializeTrackMesh();
-    initializeParticleMesh();
     updateCamera(true);
 }
 
@@ -623,36 +609,22 @@ void World::updateDebris(float elapsed)
 
 void World::updateParticles(float elapsed)
 {
-    auto it = m_particles.begin();
-    while (it != m_particles.end()) {
-        auto &particle = *it;
-        particle.time += elapsed;
-        if (particle.time >= particle.life) {
-            it = m_particles.erase(it);
-        } else {
-            particle.position += elapsed * particle.velocity;
-            ++it;
-        }
-    }
-    if (m_particles.size() < MaxParticles) {
-        constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
-        const auto laneWidth = UsableTrackWidth / m_track->eventTracks;
-        const auto radius = 0.5f * laneWidth;
+    m_particleSystem->update(elapsed);
 
-        for (int i = 0; i < m_track->eventTracks; ++i) {
-            if (static_cast<unsigned>(m_prevInputState) & (1 << i)) {
-                for (int j = 0; j < 5; ++j) {
-                    const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
-                    glm::vec3 p = glm::vec3(0.0, glm::vec2(laneX, 0) + glm::diskRand(radius));
-                    const glm::vec3 o = glm::vec3(-.2, laneX, 0);
-                    Particle particle;
-                    particle.position = o + glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
-                    particle.velocity = glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
-                    particle.size = glm::vec2(.002, .05);
-                    particle.time = 0;
-                    particle.life = 1;
-                    m_particles.push_back(particle);
-                }
+    constexpr auto UsableTrackWidth = static_cast<float>(720) * TrackWidth / 800;
+    const auto laneWidth = UsableTrackWidth / m_track->eventTracks;
+    const auto radius = 0.5f * laneWidth;
+
+    for (int i = 0; i < m_track->eventTracks; ++i) {
+        if (static_cast<unsigned>(m_prevInputState) & (1 << i)) {
+            for (int j = 0; j < 5; ++j) {
+                const auto laneX = -0.5f * UsableTrackWidth + (i + 0.5f) * laneWidth;
+                glm::vec3 p = glm::vec3(0.0, glm::vec2(laneX, 0) + glm::diskRand(radius));
+                const glm::vec3 o = glm::vec3(-.2, laneX, 0);
+                const auto position = o + glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
+                const auto velocity = glm::linearRand(0.1f, .15f) * glm::normalize(p - o);
+                const auto size = glm::vec2(.002, .05);
+                m_particleSystem->spawnParticle(position, velocity, size, 1);
             }
         }
     }
@@ -799,19 +771,9 @@ void World::render() const
         }
     }
 
-    if (!m_particles.empty()) {
-        std::vector<ParticleState> particleData;
-        std::transform(m_particles.begin(), m_particles.end(), std::back_inserter(particleData), [](const Particle &particle) -> ParticleState {
-            const float t = particle.time / particle.life;
-            float alpha = .25f * Tweeners::InOutQuadratic<float>()(t);
-            return { particle.position, particle.velocity, particle.size, alpha };
-        });
-        m_particleMesh->setVertexCount(m_particles.size());
-        m_particleMesh->setVertexData(particleData.data());
-        m_renderer->render(m_particleMesh.get(), particleMaterial(), m_markerTransform);
-    }
-
     m_renderer->end();
+
+    m_particleSystem->render(m_markerTransform);
 }
 
 static std::u32string timeToString(float t)
@@ -911,8 +873,6 @@ static void initializeSegment(std::vector<glm::vec3> &vertices, const glm::vec3 
 
 void World::initializeTrackMesh()
 {
-    std::srand(1234); // glm uses std::rand, this seed gives a nice looking track on windows
-
     std::vector<glm::vec3> controlPoints;
     initializeSegment(controlPoints, glm::vec3(-10, 0, 0), glm::vec3(10, 0, 0), 5);
 
@@ -974,23 +934,6 @@ void World::initializeTrackMesh()
                  distance, m_trackSegments.size(), m_pathParts.size());
 }
 
-void World::initializeParticleMesh()
-{
-    m_particleMesh = std::make_unique<Mesh>(GL_POINTS);
-
-    static const std::vector<Mesh::VertexAttribute> attributes = {
-        { 3, GL_FLOAT, offsetof(ParticleState, position) },
-        { 3, GL_FLOAT, offsetof(ParticleState, velocity) },
-        { 2, GL_FLOAT, offsetof(ParticleState, size) },
-        { 1, GL_FLOAT, offsetof(ParticleState, alpha) }
-    };
-
-    m_particleMesh->setVertexCount(MaxParticles);
-    m_particleMesh->setVertexSize(sizeof(ParticleState));
-    m_particleMesh->setVertexAttributes(attributes);
-    m_particleMesh->initialize();
-}
-
 void World::initializeBeatMeshes()
 {
     m_beatMesh = loadMesh(meshPath("beat.obj"));
@@ -1045,7 +988,7 @@ void World::initializeButtonMesh()
     m_buttonMesh = makeMesh(vertices, GL_TRIANGLE_STRIP);
 }
 
-void World::setTrack(const Track* track)
+void World::setTrack(const Track *track)
 {
     m_track = track;
 }

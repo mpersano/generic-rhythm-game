@@ -30,6 +30,8 @@ set(game_SOURCES
     hudpainter.h
     logo.cpp
     logo.h
+    particlesystem.cpp
+    particlesystem.h
 )
 
 add_executable(game ${game_SOURCES})
