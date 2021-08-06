@@ -29,7 +29,7 @@ public:
     void render() const;
     void renderHUD(HUDPainter *hudPainter) const;
 
-    void setTrack(const Track* track);
+    void setTrack(const Track *track);
 
     void startGame();
     bool isPlaying() const;
@@ -40,8 +40,7 @@ private:
     void initializeBeatMeshes();
     void initializeMarkerMesh();
     void initializeButtonMesh();
-    struct PathState
-    {
+    struct PathState {
         glm::mat3 orientation;
         glm::vec3 center;
 
