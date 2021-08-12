@@ -16,10 +16,12 @@ namespace {
 
 static const auto fontPath = "assets/fonts/OpenSans_Regular.ttf"s;
 
+constexpr auto TextureAtlasPageSize = 512;
 }
 
 HUDPainter::HUDPainter()
     : m_spriteBatcher(new GX::SpriteBatcher)
+    , m_textureAtlas(new GX::TextureAtlas(TextureAtlasPageSize, TextureAtlasPageSize, GX::PixelType::Grayscale))
 {
     m_textProgram = loadProgram("text.vert", nullptr, "text.frag");
 }
@@ -51,7 +53,7 @@ void HUDPainter::setFont(const Font &font)
 {
     auto it = m_fonts.find(font);
     if (it == m_fonts.end()) {
-        auto fontCache = std::make_unique<GX::FontCache>();
+        auto fontCache = std::make_unique<GX::FontCache>(m_textureAtlas.get());
         if (!fontCache->load(font.fontPath, font.pixelHeight)) {
             spdlog::error("Failed to load font {}", font.fontPath);
         }

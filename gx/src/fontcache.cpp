@@ -7,13 +7,8 @@
 
 namespace GX {
 
-namespace {
-constexpr auto TextureWidth = 256;
-constexpr auto TextureHeight = 256;
-} // namespace
-
-FontCache::FontCache()
-    : m_textureAtlas(TextureWidth, TextureHeight, PixelType::Grayscale)
+FontCache::FontCache(TextureAtlas *textureAtlas)
+    : m_textureAtlas(textureAtlas)
 {
 }
 
@@ -55,7 +50,7 @@ const FontCache::Glyph *FontCache::getGlyph(int codepoint)
 
 std::unique_ptr<FontCache::Glyph> FontCache::initializeGlyph(int codepoint)
 {
-    auto pm = m_textureAtlas.addPixmap(getCodepointPixmap(codepoint));
+    auto pm = m_textureAtlas->addPixmap(getCodepointPixmap(codepoint));
     if (!pm) {
         spdlog::critical("Couldn't fit glyph {} in texture atlas", codepoint);
         return {};
@@ -93,11 +88,6 @@ Pixmap FontCache::getCodepointPixmap(int codepoint) const
     stbtt_MakeCodepointBitmap(&m_font, pm.pixels.data(), width, height, width, m_scale, m_scale, codepoint);
 
     return pm;
-}
-
-const TextureAtlas &FontCache::textureAtlas() const
-{
-    return m_textureAtlas;
 }
 
 } // namespace GX

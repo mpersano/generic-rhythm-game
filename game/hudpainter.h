@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace GX {
+class TextureAtlas;
 class FontCache;
 class SpriteBatcher;
 } // namespace GX
@@ -67,6 +68,7 @@ private:
     };
     std::unordered_map<Font, std::unique_ptr<GX::FontCache>, FontHasher> m_fonts;
     std::unique_ptr<GX::SpriteBatcher> m_spriteBatcher;
+    std::unique_ptr<GX::TextureAtlas> m_textureAtlas;
     std::unique_ptr<GX::GL::ShaderProgram> m_textProgram;
     GX::BoxF m_sceneBox = {};
     GX::FontCache *m_font = nullptr;

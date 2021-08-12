@@ -28,7 +28,8 @@ void dumpPgm(const std::string &path, int width, int height, const unsigned char
 
 int main()
 {
-    GX::FontCache fontCache;
+    GX::TextureAtlas textureAtlas(256, 256, GX::PixelType::Grayscale);
+    GX::FontCache fontCache(&textureAtlas);
 
     const auto font =
 #ifdef _WIN32
@@ -66,8 +67,6 @@ int main()
         // insert glyph into font cache
         fontCache.getGlyph(ch);
     }
-
-    const auto &textureAtlas = fontCache.textureAtlas();
 
     // dump the generated texture atlases to pgm image files
     for (int i = 0, count = textureAtlas.pageCount(); i < count; ++i) {

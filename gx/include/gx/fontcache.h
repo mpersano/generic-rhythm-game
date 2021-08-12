@@ -17,7 +17,7 @@ struct Pixmap;
 class FontCache
 {
 public:
-    FontCache();
+    explicit FontCache(TextureAtlas *textureAtlas);
     ~FontCache();
 
     bool load(const std::string &ttfPath, int pixelHeight);
@@ -29,17 +29,13 @@ public:
     };
     const Glyph *getGlyph(int codepoint);
 
-    const TextureAtlas &textureAtlas() const;
-
 private:
     std::unique_ptr<Glyph> initializeGlyph(int codepoint);
     Pixmap getCodepointPixmap(int codepoint) const;
 
     std::vector<unsigned char> m_ttfBuffer;
     stbtt_fontinfo m_font;
-    // TODO: FontCache shouldn't own TextureAtlas, we want to have multiple fonts sharing the same
-    // texture atlas
-    TextureAtlas m_textureAtlas;
+    TextureAtlas *m_textureAtlas;
     std::unordered_map<int, std::unique_ptr<Glyph>> m_glyphs;
     float m_scale = 0.0f;
     float m_ascent;

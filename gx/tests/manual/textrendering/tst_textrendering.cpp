@@ -67,7 +67,8 @@ private:
     void paintGL() override;
     void update(double elapsed) override;
 
-    GX::FontCache m_fontCache;
+    std::unique_ptr<GX::TextureAtlas> m_textureAtlas;
+    std::unique_ptr<GX::FontCache> m_fontCache;
     std::unique_ptr<GX::GL::ShaderProgram> m_program;
     std::unique_ptr<GX::SpriteBatcher> m_spriteBatcher;
     double m_angle = 0.0;
@@ -77,13 +78,16 @@ void TestWindow::initializeGL()
 {
     using namespace std::string_literals;
 
+    m_textureAtlas = std::make_unique<GX::TextureAtlas>(256, 256, GX::PixelType::Grayscale);
+    m_fontCache = std::make_unique<GX::FontCache>(m_textureAtlas.get());
+
     const auto font =
 #ifdef _WIN32
             "/Windows/Fonts/comic.ttf"s;
 #else
             "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf"s;
 #endif
-    if (!m_fontCache.load(font, 50)) {
+    if (!m_fontCache->load(font, 50)) {
         spdlog::warn("failed to load {}", font.c_str());
     }
 
@@ -152,7 +156,7 @@ void TestWindow::paintGL()
     for (const auto &text : lines) {
         float x = 100;
         for (char32_t ch : text) {
-            const auto glyph = m_fontCache.getGlyph(ch);
+            const auto glyph = m_fontCache->getGlyph(ch);
             if (!glyph) {
                 continue;
             }
