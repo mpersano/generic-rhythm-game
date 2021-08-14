@@ -40,6 +40,7 @@ target_link_libraries(
     game
     gx
     rapidjson
+    fmt
     OpenAL
     Boost::headers
 )

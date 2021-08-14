@@ -13,6 +13,7 @@
 #include "track.h"
 #include "tween.h"
 
+#include <fmt/format.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
@@ -358,14 +359,8 @@ public:
 private:
     void updateText()
     {
-        // why no std::to_string for u32string?!
         m_text.clear();
-        int value = m_count;
-        while (value) {
-            const int digit = value % 10;
-            m_text.insert(m_text.begin(), U'0' + digit);
-            value /= 10;
-        }
+        fmt::format_to(std::back_inserter(m_text), "{}", m_count);
     }
 
     static constexpr auto MaxScale = 1.25f;
@@ -779,21 +774,8 @@ void World::render() const
 static std::u32string timeToString(float t)
 {
     const auto seconds = static_cast<int>(t);
-
     std::u32string result;
-
-    // aaaaaaaaaaaaaaaaaaaaaaaaaaaa
-
-    const auto formatNumber = [&result](int value) {
-        // aaaaaaaaaaaaaaaaaaaaaaaaaaaa
-        result.push_back((value / 10) + U'0');
-        result.push_back((value % 10) + U'0');
-    };
-
-    formatNumber(seconds / 60);
-    result.push_back(U':');
-    formatNumber(seconds % 60);
-
+    fmt::format_to(std::back_inserter(result), "{:02d}:{:02d}", seconds / 60, seconds % 60);
     return result;
 }
 

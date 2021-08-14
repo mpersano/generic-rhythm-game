@@ -10,3 +10,5 @@ add_subdirectory(openal-soft)
 
 add_library(rapidjson INTERFACE)
 target_include_directories(rapidjson INTERFACE rapidjson/include)
+
+add_subdirectory(fmt)
