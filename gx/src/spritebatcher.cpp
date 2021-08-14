@@ -226,19 +226,12 @@ void SpriteBatcher::initializeResources()
 
     glBindVertexArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    m_initialized = true;
 }
 
 void SpriteBatcher::releaseResources()
 {
     glDeleteBuffers(1, &m_vbo);
     glDeleteVertexArrays(1, &m_vao);
-}
-
-bool SpriteBatcher::initialized() const
-{
-    return m_initialized;
 }
 
 } // namespace GX

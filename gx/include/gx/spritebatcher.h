@@ -20,8 +20,6 @@ public:
     SpriteBatcher();
     ~SpriteBatcher();
 
-    bool initialized() const;
-
     void setTransformMatrix(const glm::mat4 &matrix);
     glm::mat4 transformMatrix() const;
 
@@ -65,7 +63,6 @@ private:
     GLuint m_vbo;
     glm::mat4 m_transformMatrix;
     const GL::ShaderProgram *m_batchProgram = nullptr;
-    bool m_initialized = false;
     mutable bool m_bufferAllocated = false;
     mutable int m_bufferOffset = 0;
 };
