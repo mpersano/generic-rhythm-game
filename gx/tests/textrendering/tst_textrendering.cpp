@@ -1,6 +1,5 @@
 #include <gx/fontcache.h>
 #include <gx/glwindow.h>
-#include <gx/mesh.h>
 #include <gx/pixmap.h>
 #include <gx/shaderprogram.h>
 #include <gx/spritebatcher.h>
